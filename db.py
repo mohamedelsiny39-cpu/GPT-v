@@ -113,8 +113,8 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT NOT NULL,        -- 'task' (اجتماعي) أو 'achievement' (إنجاز تدريجي)
-                task_type TEXT NOT NULL,       -- telegram/youtube/instagram/twitter/other/taps/ads/level/referrals
+                category TEXT NOT NULL,
+                task_type TEXT NOT NULL,
                 title_ar TEXT NOT NULL,
                 title_en TEXT NOT NULL,
                 reward INTEGER NOT NULL,
@@ -127,6 +127,33 @@ def init_db():
             )
             """
         )
+        # حماية: لو جدول tasks كان موجود قبل كده بمخطط قديم (من نسخة سابقة)
+        # وناقصه أعمدة أساسية، امسحه واعمله من جديد. آمن تماماً لأن الجدول ده
+        # بيحتوي على تعريفات المهام بس (تقدر تتضاف تاني من الأدمن)، مش بيانات اللاعبين.
+        tasks_cols = {r[1] for r in conn.execute("PRAGMA table_info(tasks)")}
+        required_cols = {"category", "task_type", "title_ar", "title_en", "reward"}
+        if tasks_cols and not required_cols.issubset(tasks_cols):
+            conn.execute("DROP TABLE IF EXISTS tasks")
+            conn.execute("DROP TABLE IF EXISTS user_task_claims")
+            conn.execute(
+                """
+                CREATE TABLE tasks (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    category TEXT NOT NULL,
+                    task_type TEXT NOT NULL,
+                    title_ar TEXT NOT NULL,
+                    title_en TEXT NOT NULL,
+                    reward INTEGER NOT NULL,
+                    target INTEGER NOT NULL DEFAULT 0,
+                    url TEXT NOT NULL DEFAULT '',
+                    channel_username TEXT NOT NULL DEFAULT '',
+                    active INTEGER NOT NULL DEFAULT 1,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at REAL NOT NULL
+                )
+                """
+            )
+
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS user_task_claims (
