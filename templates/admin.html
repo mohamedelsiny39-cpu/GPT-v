@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>لوحة تحكم CanCel</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-wrap">
+
+  <header class="admin-header">
+    <h1>لوحة تحكم CanCel</h1>
+    <div class="header-links">
+      <a href="{{ url_for('admin_tasks') }}" class="nav-link">المهام والإنجازات</a>
+      <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
+    </div>
+  </header>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="stat-num">{{ "{:,}".format(stats.total_users) }}</div>
+      <div class="stat-label">إجمالي المستخدمين</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ "{:,}".format(stats.total_coins) }}</div>
+      <div class="stat-label">إجمالي CCL الموزّعة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ "{:,}".format(stats.total_taps) }}</div>
+      <div class="stat-label">إجمالي الضغطات</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ "{:,}".format(stats.total_ads) }}</div>
+      <div class="stat-label">إجمالي الإعلانات المشاهدة</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">{{ "{:,}".format(stats.total_referrals) }}</div>
+      <div class="stat-label">إجمالي الدعوات</div>
+    </div>
+  </div>
+
+  <h2 class="section-title">كل اللاعبين ({{ users|length }})</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>الاسم</th>
+          <th>CCL</th>
+          <th>تعديل الرصيد</th>
+          <th>المستوى</th>
+          <th>الطاقة</th>
+          <th>ضغطات</th>
+          <th>إعلانات</th>
+          <th>دعوات</th>
+          <th>آخر نشاط</th>
+          <th>User ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in users %}
+        <tr>
+          <td>{{ loop.index }}</td>
+          <td>{{ u.first_name or "—" }}</td>
+          <td class="mono">{{ "{:,}".format(u.coins) }}</td>
+          <td>
+            <form class="coin-edit-form" method="post" action="{{ url_for('admin_set_coins', user_id=u.user_id) }}">
+              <input type="number" name="new_coins" value="{{ u.coins }}" min="0" />
+              <button type="submit">تحديث</button>
+            </form>
+          </td>
+          <td class="mono">{{ u.level if u.level is defined else "—" }}</td>
+          <td class="mono">{{ u.energy }}/{{ u.max_energy }}</td>
+          <td class="mono">{{ "{:,}".format(u.total_taps) }}</td>
+          <td class="mono">{{ "{:,}".format(u.ads_watched) }}</td>
+          <td class="mono">{{ u.referral_count }}</td>
+          <td class="mono muted">{{ ((now - u.last_active) / 60) | round(0, 'floor') | int }} د</td>
+          <td class="mono muted">{{ u.user_id }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>

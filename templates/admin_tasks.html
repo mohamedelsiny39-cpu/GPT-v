@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>إدارة المهام - CanCel</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-wrap">
+
+  <header class="admin-header">
+    <h1>إدارة المهام والإنجازات</h1>
+    <div class="header-links">
+      <a href="{{ url_for('admin_dashboard') }}" class="nav-link">اللاعبين</a>
+      <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
+    </div>
+  </header>
+
+  <h2 class="section-title">إضافة مهمة / إنجاز جديد</h2>
+  <form class="add-task-form" method="post" action="{{ url_for('admin_tasks_add') }}">
+    <div class="form-row">
+      <label>النوع
+        <select name="category" required>
+          <option value="task">مهمة اجتماعية (task)</option>
+          <option value="achievement">إنجاز تدريجي (achievement)</option>
+        </select>
+      </label>
+      <label>نوع فرعي
+        <select name="task_type" required>
+          <option value="telegram">تليجرام (بيتحقق أوتوماتيك)</option>
+          <option value="youtube">يوتيوب</option>
+          <option value="instagram">إنستجرام</option>
+          <option value="twitter">تويتر/X</option>
+          <option value="other">تاني</option>
+          <option value="taps">إنجاز: عدد الضغطات</option>
+          <option value="ads">إنجاز: عدد الإعلانات</option>
+          <option value="level">إنجاز: المستوى</option>
+          <option value="referrals">إنجاز: عدد الدعوات</option>
+        </select>
+      </label>
+    </div>
+    <div class="form-row">
+      <label>العنوان (عربي)<input type="text" name="title_ar" required /></label>
+      <label>العنوان (إنجليزي)<input type="text" name="title_en" required /></label>
+    </div>
+    <div class="form-row">
+      <label>المكافأة (CCL)<input type="number" name="reward" min="1" required /></label>
+      <label>الهدف (للإنجازات بس)<input type="number" name="target" min="0" value="0" /></label>
+      <label>الترتيب<input type="number" name="sort_order" min="0" value="0" /></label>
+    </div>
+    <div class="form-row">
+      <label>الرابط (للمهام الاجتماعية)<input type="text" name="url" placeholder="https://..." /></label>
+      <label>يوزر قناة تليجرام (بدون @)<input type="text" name="channel_username" placeholder="mychannel" /></label>
+    </div>
+    <button type="submit" class="primary-btn">إضافة</button>
+  </form>
+
+  <h2 class="section-title">مهام موجودة</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th><th>النوع</th><th>العنوان (عربي)</th><th>مكافأة</th><th>هدف</th>
+          <th>رابط/قناة</th><th>فعّالة؟</th><th>إجراءات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for task in tasks %}
+        <tr>
+          <td class="mono">{{ task.id }}</td>
+          <td class="mono">{{ task.category }} / {{ task.task_type }}</td>
+          <td>{{ task.title_ar }}</td>
+          <td class="mono">{{ task.reward }}</td>
+          <td class="mono">{{ task.target or "—" }}</td>
+          <td class="mono muted small-cell">{{ task.url or task.channel_username or "—" }}</td>
+          <td>{{ "✅" if task.active else "🚫" }}</td>
+          <td class="actions-cell">
+            <form method="post" action="{{ url_for('admin_tasks_toggle', task_id=task.id) }}">
+              <button type="submit" class="small-btn">{{ "إيقاف" if task.active else "تفعيل" }}</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_tasks_delete', task_id=task.id) }}"
+                  onsubmit="return confirm('متأكد إنك عايز تمسح المهمة دي؟');">
+              <button type="submit" class="small-btn danger-btn">حذف</button>
+            </form>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
