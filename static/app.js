@@ -480,18 +480,92 @@ async function loadTasks() {
   tasks.forEach((tItem) => {
     const card = document.createElement("div");
     card.className = "task-card";
-    const btnLabel = tItem.status === "claimed" ? t("claimed") : t("claim");
+    const btnLabel = tItem.status === "claimed" ? t("claimed") : t("start");
     card.innerHTML = `
       <div class="task-info">
         <div class="task-title">${tItem.title}</div>
         <div class="task-reward">+${tItem.reward} CCL</div>
-        ${tItem.url ? `<a class="task-open-link" href="${tItem.url}" target="_blank" rel="noopener">${t("openLink")} ↗</a>` : ""}
       </div>
-      <button class="task-btn ${tItem.status}" ${tItem.status !== "available" ? "disabled" : ""} data-id="${tItem.id}">${btnLabel}</button>
+      <button class="task-btn ${tItem.status === "claimed" ? "claimed" : "available"}"
+              ${tItem.status === "claimed" ? "disabled" : ""}
+              data-id="${tItem.id}" data-url="${tItem.url || ""}" data-type="${tItem.task_type}"
+              data-stage="start">${btnLabel}</button>
     `;
     els.tasksList.appendChild(card);
   });
-  attachTaskClaimHandlers(els.tasksList, loadTasks);
+  attachSocialTaskHandlers();
+}
+
+function attachSocialTaskHandlers() {
+  els.tasksList.querySelectorAll(".task-btn.available").forEach((btn) => {
+    btn.addEventListener("click", () => handleSocialTaskClick(btn));
+  });
+}
+
+function handleSocialTaskClick(btn) {
+  const stage = btn.dataset.stage;
+  const url = btn.dataset.url;
+
+  if (stage === "start") {
+    if (url) {
+      if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank");
+    }
+    btn.disabled = true;
+    let secondsLeft = 5;
+    btn.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
+    const interval = setInterval(() => {
+      secondsLeft -= 1;
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+        btn.textContent = t("claim");
+        btn.dataset.stage = "claim";
+        btn.disabled = false;
+      } else {
+        btn.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
+      }
+    }, 1000);
+    return;
+  }
+
+  if (stage === "claim") {
+    claimSocialTask(btn);
+  }
+}
+
+async function claimSocialTask(btn) {
+  btn.disabled = true;
+  const taskId = btn.dataset.id;
+  const taskType = btn.dataset.type;
+  const url = btn.dataset.url;
+  try {
+    const res = await fetch("/api/tasks/claim", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, task_id: taskId }),
+    });
+    const state = await res.json();
+
+    if (res.ok) {
+      applyServerState(state);
+      showToast(`+${state.claimed_reward} CCL`);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+      btn.textContent = t("claimed");
+      btn.className = "task-btn claimed";
+      return;
+    }
+
+    if (state.error === "not_subscribed") {
+      showToast(t("notSubscribedRetry"));
+      if (url) {
+        if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank");
+      }
+      btn.disabled = false; // يقدر يدوس استلام تاني بعد ما يشترك فعلاً
+    } else {
+      btn.disabled = false;
+    }
+  } catch (e) {
+    btn.disabled = false;
+  }
 }
 
 async function loadAchievements() {
