@@ -666,7 +666,6 @@ async function loadAirdrop() {
   const condLabels = {
     coins: `${t("conditionCoins")} ${formatNum(data.conditions.find(c => c.key === "coins").target)} CCL`,
     referrals: `${t("conditionReferrals")} ${data.conditions.find(c => c.key === "referrals").target} ${t("friends")}`,
-    telegram: t("conditionTelegram"),
     engagement: `${t("conditionEngagement")} ${formatNum(data.conditions.find(c => c.key === "engagement").target)} ${t("taps")}`,
   };
 
