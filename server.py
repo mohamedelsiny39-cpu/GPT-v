@@ -227,8 +227,7 @@ def api_airdrop():
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
     db.get_or_create_user(user_id)
-    subscribed = check_telegram_membership(user_id)
-    status = db.get_airdrop_status(user_id, subscribed)
+    status = db.get_airdrop_status(user_id)
     return jsonify(status)
 
 
