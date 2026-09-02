@@ -47,7 +47,7 @@ function showToast(msg) {
 let S = {
   coins: 0, energy: 100, max_energy: 100, seconds_to_refill: 0,
   level: 1, coins_per_tap: 1, squares: [], total_taps: 0, ads_watched: 0,
-  ads: {}, minigame: {},
+  ads: {},
 };
 let prevSquares = null;
 
@@ -76,13 +76,10 @@ const els = {
   levelBarFill: document.getElementById("levelBarFill"),
   adBtnVideo: document.getElementById("adBtnVideo"),
   adBtnExternal: document.getElementById("adBtnExternal"),
-  minigameBtn: document.getElementById("minigameBtn"),
   adVideoReward: document.getElementById("adVideoReward"),
   adExternalReward: document.getElementById("adExternalReward"),
-  minigameReward: document.getElementById("minigameReward"),
   adVideoRemaining: document.getElementById("adVideoRemaining"),
   adExternalRemaining: document.getElementById("adExternalRemaining"),
-  minigameRemaining: document.getElementById("minigameRemaining"),
   adOverlay: document.getElementById("adOverlay"),
   adProgressFill: document.getElementById("adProgressFill"),
   checkinStreakText: document.getElementById("checkinStreakText"),
@@ -153,10 +150,6 @@ function renderAdButtons() {
     els.adExternalReward.textContent = `+${a.min_reward}-${a.max_reward}`;
     els.adExternalRemaining.textContent = `${a.remaining}/${a.limit}`;
   }
-  if (S.minigame.min_reward !== undefined) {
-    els.minigameReward.textContent = `+${S.minigame.min_reward}-${S.minigame.max_reward}`;
-    els.minigameRemaining.textContent = `${S.minigame.remaining}/${S.minigame.limit}`;
-  }
 }
 
 const PLOT_ICONS = ["⛺", "🏠", "🏡", "🏢", "🏬", "🕌", "🎡", "🗼", "🏟️", "🌆"];
@@ -215,7 +208,7 @@ function applyServerState(state) {
     seconds_to_refill: state.seconds_to_refill, level: state.level,
     coins_per_tap: state.coins_per_tap, squares: state.squares,
     total_taps: state.total_taps, ads_watched: state.ads_watched,
-    ads: state.ads || {}, minigame: state.minigame || {},
+    ads: state.ads || {},
   };
   renderCore();
   renderCity();
@@ -383,57 +376,6 @@ function initInAppAds() {
   });
 }
 initInAppAds();
-
-// ===== صندوق الحظ (Minigame) =====
-els.minigameBtn.addEventListener("click", async () => {
-  const now = Date.now();
-  if (now - lastAdClientTime < AD_MIN_GAP_MS) return;
-  if (els.minigameBtn.disabled) return;
-
-  if (S.minigame.remaining <= 0) {
-    showToast(`${t("dailyLimitReached")} ${Math.ceil(S.minigame.seconds_to_refill / 60)}m`);
-    return;
-  }
-
-  els.minigameBtn.disabled = true;
-  els.adOverlay.classList.remove("hidden");
-  els.adProgressFill.style.width = "30%";
-
-  const ready = await waitForAdSdk();
-  if (!ready) {
-    els.adOverlay.classList.add("hidden");
-    els.minigameBtn.disabled = false;
-    showToast(t("noAdsAvailable"));
-    return;
-  }
-  lastAdClientTime = now;
-  els.adProgressFill.style.width = "70%";
-
-  window[AD_ZONE_FN]()
-    .then(async () => {
-      els.adOverlay.classList.add("hidden");
-      showToast(t("minigameOpening"));
-      try {
-        const res = await fetch("/api/minigame/play", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.id, first_name: user.first_name, photo_url: user.photo_url }),
-        });
-        const state = await res.json();
-        if (res.ok) {
-          applyServerState(state);
-          showToast(`🎁 +${state.minigame_reward} CCL`);
-          if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
-        }
-      } catch (e) { /* تجاهل */ }
-      startButtonCooldown(els.minigameBtn, 8);
-    })
-    .catch(() => {
-      els.adOverlay.classList.add("hidden");
-      els.minigameBtn.disabled = false;
-      lastAdClientTime = 0;
-    });
-});
 
 // ===== التسجيل اليومي =====
 async function loadCheckin() {
