@@ -679,7 +679,7 @@ def admin_delete_task(task_id: int):
 
 # ---------- الإيردروب ----------
 
-def get_airdrop_status(user_id: int, telegram_subscribed: bool):
+def get_airdrop_status(user_id: int):
     with _lock, _get_conn() as conn:
         row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
         if row is None:
@@ -689,7 +689,6 @@ def get_airdrop_status(user_id: int, telegram_subscribed: bool):
              "current": row["coins"], "target": AIRDROP_COIN_REQUIREMENT},
             {"key": "referrals", "met": row["referral_count"] >= AIRDROP_REFERRAL_REQUIREMENT,
              "current": row["referral_count"], "target": AIRDROP_REFERRAL_REQUIREMENT},
-            {"key": "telegram", "met": telegram_subscribed, "current": int(telegram_subscribed), "target": 1},
             {"key": "engagement", "met": row["total_taps"] >= AIRDROP_ENGAGEMENT_TAPS_REQUIREMENT,
              "current": row["total_taps"], "target": AIRDROP_ENGAGEMENT_TAPS_REQUIREMENT},
         ]
