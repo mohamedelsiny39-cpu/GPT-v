@@ -502,14 +502,27 @@ function attachSocialTaskHandlers() {
   });
 }
 
+// بيفتح اللينك بالطريقة الصح حسب نوعه: لينكات تليجرام (t.me) لازم تتفتح
+// بدالة openTelegramLink عشان تنقل المستخدم للقناة جوه التطبيق مباشرة،
+// مش بمتصفح داخلي زي باقي الروابط الخارجية
+function openTaskUrl(url, taskType) {
+  if (!url) return;
+  if (taskType === "telegram" && tg && tg.openTelegramLink) {
+    tg.openTelegramLink(url);
+  } else if (tg && tg.openLink) {
+    tg.openLink(url);
+  } else {
+    window.open(url, "_blank");
+  }
+}
+
 function handleSocialTaskClick(btn) {
   const stage = btn.dataset.stage;
   const url = btn.dataset.url;
+  const taskType = btn.dataset.type;
 
   if (stage === "start") {
-    if (url) {
-      if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank");
-    }
+    openTaskUrl(url, taskType);
     btn.disabled = true;
     let secondsLeft = 5;
     btn.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
@@ -556,9 +569,7 @@ async function claimSocialTask(btn) {
 
     if (state.error === "not_subscribed") {
       showToast(t("notSubscribedRetry"));
-      if (url) {
-        if (tg && tg.openLink) tg.openLink(url); else window.open(url, "_blank");
-      }
+      openTaskUrl(url, taskType);
       btn.disabled = false; // يقدر يدوس استلام تاني بعد ما يشترك فعلاً
     } else {
       btn.disabled = false;
