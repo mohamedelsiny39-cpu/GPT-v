@@ -19,8 +19,8 @@ REFERRAL_SIGNUP_BONUS = 100
 AD_REFILL_SECONDS = 3600  # كل نوع إعلان بيرجع يتجدد كل ساعة (زي الطاقة)
 AD_MIN_GAP_SECONDS = 8    # أقل فاصل بين ضغطتين على أي زرار إعلان (حماية من double-click)
 AD_CONFIG = {
-    "interstitial": {"min_reward": 15, "max_reward": 20, "hourly_limit": 20},
-    "popup": {"min_reward": 5, "max_reward": 10, "hourly_limit": 20},
+    "interstitial": {"min_reward": 15, "max_reward": 20, "hourly_limit": 50},
+    "popup": {"min_reward": 5, "max_reward": 10, "hourly_limit": 50},
 }
 
 # ---------- اللعبة البسيطة (صندوق الحظ) ----------
@@ -113,8 +113,8 @@ def init_db():
             """
             CREATE TABLE IF NOT EXISTS tasks (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                category TEXT NOT NULL,
-                task_type TEXT NOT NULL,
+                category TEXT NOT NULL,        -- 'task' (اجتماعي) أو 'achievement' (إنجاز تدريجي)
+                task_type TEXT NOT NULL,       -- telegram/youtube/instagram/twitter/other/taps/ads/level/referrals
                 title_ar TEXT NOT NULL,
                 title_en TEXT NOT NULL,
                 reward INTEGER NOT NULL,
@@ -153,7 +153,6 @@ def init_db():
                 )
                 """
             )
-
         conn.execute(
             """
             CREATE TABLE IF NOT EXISTS user_task_claims (
