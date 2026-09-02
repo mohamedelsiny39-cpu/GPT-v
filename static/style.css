@@ -250,8 +250,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-img {
-  width: 100%;
-  height: 100%;
+  width: 80%;
+  height: 80%;
   object-fit: contain;
   filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
   pointer-events: none;
@@ -273,36 +273,36 @@ html[lang="en"] body { font-family: var(--font-en); }
   100% { opacity: 0; transform: translateY(-55px) scale(1.15); }
 }
 
-/* ===== 3 أزرار الإعلان/اللعبة ===== */
-.ad-row { display: flex; gap: 6px; margin-bottom: 10px; }
+/* ===== أزرار الإعلانات ===== */
+.ad-row { display: flex; gap: 6px; margin-bottom: 8px; }
 .ad-mini-btn {
   flex: 1;
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
   background: linear-gradient(180deg, rgba(139,92,246,0.16), rgba(52,217,196,0.06));
   border: 1px solid rgba(139, 92, 246, 0.3);
   color: var(--text);
-  padding: 11px 4px 8px;
-  border-radius: 13px;
+  padding: 7px 4px 6px;
+  border-radius: 11px;
   font-family: var(--font-body);
   cursor: pointer;
 }
 .ad-mini-btn:active { transform: scale(0.96); }
 .ad-mini-btn:disabled { opacity: 0.5; }
-.ad-mini-icon { font-size: 17px; }
-.ad-mini-label { font-size: 9.5px; font-weight: 700; text-align: center; line-height: 1.2; }
-.ad-mini-reward { font-family: var(--font-mono); font-size: 10px; color: var(--gold); font-weight: 700; }
-.ad-mini-remaining { font-family: var(--font-mono); font-size: 8.5px; color: var(--text-muted); }
+.ad-mini-icon { font-size: 14px; }
+.ad-mini-label { font-size: 8.5px; font-weight: 700; text-align: center; line-height: 1.15; }
+.ad-mini-reward { font-family: var(--font-mono); font-size: 9px; color: var(--gold); font-weight: 700; }
+.ad-mini-remaining { font-family: var(--font-mono); font-size: 7.5px; color: var(--text-muted); }
 .ad-mini-badge {
   position: absolute;
-  top: -6px;
-  left: 6px;
-  font-size: 8px;
+  top: -5px;
+  left: 5px;
+  font-size: 7px;
   font-weight: 700;
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 999px;
   font-family: var(--font-mono);
 }
