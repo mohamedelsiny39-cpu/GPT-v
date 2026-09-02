@@ -19,10 +19,19 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN", "")
 TELEGRAM_CHANNEL = os.environ.get("TELEGRAM_CHANNEL", "")
 
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+
 def check_telegram_membership(user_id: int, channel_username: str = None) -> bool:
     """بيتحقق حقيقي من اشتراك المستخدم في قناة تليجرام عن طريق Bot API"""
-    channel = channel_username or TELEGRAM_CHANNEL
+    channel = (channel_username or TELEGRAM_CHANNEL or "").strip().lstrip("@")
     if not channel or not BOT_TOKEN:
+        logger.warning(
+            "check_telegram_membership: TELEGRAM_CHANNEL أو BOT_TOKEN مش متظبطين "
+            "(channel=%r, bot_token_set=%s)", channel, bool(BOT_TOKEN)
+        )
         return False
     try:
         params = urllib.parse.urlencode({"chat_id": f"@{channel}", "user_id": user_id})
@@ -30,10 +39,12 @@ def check_telegram_membership(user_id: int, channel_username: str = None) -> boo
         with urllib.request.urlopen(url, timeout=5) as resp:
             data = json.loads(resp.read())
         if not data.get("ok"):
+            logger.warning("check_telegram_membership: Telegram API رفض الطلب: %s", data)
             return False
         status = data["result"]["status"]
         return status in ("member", "administrator", "creator")
-    except Exception:
+    except Exception as e:
+        logger.warning("check_telegram_membership: exception %s", e)
         return False
 
 
@@ -61,7 +72,6 @@ def build_state(row):
         "total_taps": row["total_taps"],
         "ads_watched": row["ads_watched"],
         "ads": db.get_ad_status(row["user_id"]),
-        "minigame": db.get_minigame_status(row["user_id"]),
     }
 
 
@@ -125,26 +135,6 @@ def api_watch_ad():
     row = db.get_or_create_user(user_id)
     state = build_state(row)
     state["ad_reward"] = result["reward"]
-    return jsonify(state)
-
-
-@app.route("/api/minigame/play", methods=["POST"])
-def api_minigame_play():
-    data = request.get_json(silent=True) or {}
-    user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"error": "user_id required"}), 400
-
-    db.get_or_create_user(user_id, data.get("first_name", ""), data.get("photo_url", ""))
-    result = db.play_minigame(user_id)
-    if result is None:
-        return jsonify({"error": "user not found"}), 404
-    if "error" in result:
-        return jsonify(result), 429
-
-    row = db.get_or_create_user(user_id)
-    state = build_state(row)
-    state["minigame_reward"] = result["reward"]
     return jsonify(state)
 
 
