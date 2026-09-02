@@ -69,10 +69,8 @@
 
     <div class="tap-zone">
       <button id="coinBtn" class="coin-btn" aria-label="tap">
-        <span class="coin-shine"></span>
-        <span class="coin-face">
-          <span class="coin-cc">CCL</span>
-        </span>
+        <span class="coin-glow-ring"></span>
+        <img src="{{ url_for('static', filename='images/coin.png') }}" alt="CanCel Coin" class="coin-img" />
       </button>
       <div id="particles" class="particles"></div>
     </div>
@@ -193,7 +191,7 @@
           <div class="airdrop-date" id="airdropDate">25/9/2026</div>
         </div>
       </div>
-      <div class="airdrop-prize" id="airdropPrize">400$ / 20,000 <span data-i18n="egp">جنيه</span></div>
+      <div class="airdrop-prize" id="airdropPrize">20,000 <span data-i18n="egp">جنيه</span></div>
       <div class="airdrop-conditions" id="airdropConditions"></div>
     </div>
 
