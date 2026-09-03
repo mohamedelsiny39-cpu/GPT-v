@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{{ user.first_name }} - لاعب - CanCel</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-wrap">
+
+  <header class="admin-header">
+    <h1>{{ user.first_name or "لاعب" }} <span class="mono muted">#{{ user.user_id }}</span></h1>
+    <div class="header-links">
+      <a href="{{ url_for('admin_dashboard') }}" class="nav-link">كل اللاعبين</a>
+      <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
+    </div>
+  </header>
+
+  <div class="stat-grid">
+    <div class="stat-card"><div class="stat-num">{{ "{:,}".format(user.coins) }}</div><div class="stat-label">الرصيد</div></div>
+    <div class="stat-card"><div class="stat-num">{{ user.level }}</div><div class="stat-label">المستوى</div></div>
+    <div class="stat-card"><div class="stat-num">{{ user.energy }}/{{ user.max_energy }}</div><div class="stat-label">الطاقة</div></div>
+    <div class="stat-card"><div class="stat-num">{{ user.referral_count }}</div><div class="stat-label">دعوات</div></div>
+  </div>
+
+  <h2 class="section-title">تعديل بيانات اللاعب</h2>
+  <form class="add-task-form" method="post" action="{{ url_for('admin_user_update', user_id=user.user_id) }}">
+    <div class="form-row">
+      <label>الاسم<input type="text" name="first_name" value="{{ user.first_name or '' }}" /></label>
+      <label>الرصيد (CCL)<input type="number" name="coins" value="{{ user.coins }}" min="0" /></label>
+      <label>الطاقة الحالية<input type="number" name="energy" value="{{ user.energy }}" min="0" /></label>
+      <label>الطاقة القصوى<input type="number" name="max_energy" value="{{ user.max_energy }}" min="1" /></label>
+    </div>
+    <div class="form-row">
+      <label>إجمالي الضغطات<input type="number" name="total_taps" value="{{ user.total_taps }}" min="0" /></label>
+      <label>إجمالي الإعلانات المشاهدة<input type="number" name="ads_watched" value="{{ user.ads_watched }}" min="0" /></label>
+      <label>عدد الدعوات<input type="number" name="referral_count" value="{{ user.referral_count }}" min="0" /></label>
+      <label>عملات من الدعوات<input type="number" name="referral_coins" value="{{ user.referral_coins }}" min="0" /></label>
+    </div>
+    <div class="form-row">
+      <label>سلسلة تسجيل الدخول اليومي<input type="number" name="checkin_streak" value="{{ user.checkin_streak }}" min="0" /></label>
+      <label>متبقي إعلانات فيديو (الساعة)<input type="number" name="ad_interstitial_remaining" value="{{ user.ad_interstitial_remaining }}" min="0" /></label>
+      <label>متبقي إعلانات خارجية (الساعة)<input type="number" name="ad_popup_remaining" value="{{ user.ad_popup_remaining }}" min="0" /></label>
+    </div>
+    <button type="submit" class="primary-btn">حفظ كل التعديلات</button>
+  </form>
+
+  <h2 class="section-title">إجراءات سريعة</h2>
+  <div class="quick-actions">
+    <form method="post" action="{{ url_for('admin_user_reset_energy', user_id=user.user_id) }}">
+      <button type="submit" class="small-btn">⚡ تصفير الطاقة (كاملة)</button>
+    </form>
+    <form method="post" action="{{ url_for('admin_user_reset_ads', user_id=user.user_id) }}">
+      <button type="submit" class="small-btn">📺 تصفير حدود الإعلانات</button>
+    </form>
+    <form method="post" action="{{ url_for('admin_user_delete', user_id=user.user_id) }}"
+          onsubmit="return confirm('متأكد إنك عايز تمسح اللاعب ده نهائياً؟ الإجراء ده مينفعش يترجع.');">
+      <button type="submit" class="small-btn danger-btn">🗑️ حذف اللاعب نهائياً</button>
+    </form>
+  </div>
+
+  <h2 class="section-title">المهام والإنجازات المستلمة ({{ claimed_tasks|length }})</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>العنوان</th><th>النوع</th><th>المكافأة</th><th>تاريخ الاستلام</th><th>إجراء</th></tr>
+      </thead>
+      <tbody>
+        {% for c in claimed_tasks %}
+        <tr>
+          <td>{{ c.title_ar }}</td>
+          <td class="mono">{{ c.category }}</td>
+          <td class="mono">{{ c.reward }}</td>
+          <td class="mono muted">{{ ((now - c.claimed_at) / 3600) | round(1) }} س</td>
+          <td>
+            <form method="post" action="{{ url_for('admin_user_unclaim', user_id=user.user_id, task_id=c.id) }}"
+                  onsubmit="return confirm('إلغاء استلام المهمة دي؟ اللاعب هيقدر يستلمها تاني، بس المكافأة اللي أخدها مش هتترد تلقائي.');">
+              <button type="submit" class="small-btn">إلغاء الاستلام</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="muted" style="text-align:center;">لسه محددش أي مهمة</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="meta-info">
+    <span>تاريخ الانضمام: {{ ((now - user.created_at) / 86400) | round(1) }} يوم</span>
+    <span>آخر نشاط: {{ ((now - user.last_active) / 60) | round(0) | int }} دقيقة</span>
+  </div>
+
+</div>
+</body>
+</html>
