@@ -199,6 +199,30 @@ function spawnParticle() {
   p.style.top = "40%";
   els.particles.appendChild(p);
   setTimeout(() => p.remove(), 800);
+
+  spawnSparks();
+}
+
+function spawnSparks() {
+  const count = 8;
+  const startRadius = 88; // قريب من حافة العملة
+  const endRadius = 165;  // لحد ما يتلاشى برا
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + (Math.random() - 0.5) * 0.5;
+    const sx = Math.cos(angle) * startRadius;
+    const sy = Math.sin(angle) * startRadius;
+    const ex = Math.cos(angle) * endRadius;
+    const ey = Math.sin(angle) * endRadius;
+
+    const s = document.createElement("span");
+    s.className = "spark";
+    s.style.setProperty("--sx", `${sx}px`);
+    s.style.setProperty("--sy", `${sy}px`);
+    s.style.setProperty("--ex", `${ex}px`);
+    s.style.setProperty("--ey", `${ey}px`);
+    els.particles.appendChild(s);
+    setTimeout(() => s.remove(), 700);
+  }
 }
 
 // ===== مزامنة مع السيرفر =====
