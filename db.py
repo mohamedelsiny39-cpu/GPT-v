@@ -745,3 +745,97 @@ def admin_set_user_coins(user_id: int, new_coins: int):
     with _lock, _get_conn() as conn:
         conn.execute("UPDATE users SET coins=? WHERE user_id=?", (max(0, new_coins), user_id))
         conn.commit()
+
+
+# ---------- تحكم كامل في اللاعبين (أدمن) ----------
+
+# الأعمدة المسموح للأدمن يعدّلها مباشرة (whitelist أمان)
+ADMIN_EDITABLE_FIELDS = {
+    "first_name": str,
+    "coins": int,
+    "energy": int,
+    "max_energy": int,
+    "total_taps": int,
+    "ads_watched": int,
+    "referral_count": int,
+    "referral_coins": int,
+    "checkin_streak": int,
+    "ad_interstitial_remaining": int,
+    "ad_popup_remaining": int,
+}
+
+
+def get_user_by_id(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        return dict(row) if row else None
+
+
+def admin_update_user(user_id: int, updates: dict):
+    clean = {}
+    for key, value in updates.items():
+        if key not in ADMIN_EDITABLE_FIELDS or value is None:
+            continue
+        caster = ADMIN_EDITABLE_FIELDS[key]
+        try:
+            clean[key] = caster(value)
+            if caster is int:
+                clean[key] = max(0, clean[key])
+        except (TypeError, ValueError):
+            continue
+    if not clean:
+        return False
+    with _lock, _get_conn() as conn:
+        set_clause = ", ".join(f"{k}=?" for k in clean)
+        conn.execute(f"UPDATE users SET {set_clause} WHERE user_id=?", (*clean.values(), user_id))
+        conn.commit()
+    return True
+
+
+def admin_delete_user(user_id: int):
+    with _lock, _get_conn() as conn:
+        conn.execute("DELETE FROM users WHERE user_id=?", (user_id,))
+        conn.execute("DELETE FROM user_task_claims WHERE user_id=?", (user_id,))
+        conn.commit()
+
+
+def admin_reset_energy(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT max_energy FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return
+        conn.execute(
+            "UPDATE users SET energy=?, last_full_refill=? WHERE user_id=?",
+            (row["max_energy"], time.time(), user_id),
+        )
+        conn.commit()
+
+
+def admin_reset_ad_limits(user_id: int):
+    with _lock, _get_conn() as conn:
+        now = time.time()
+        conn.execute(
+            "UPDATE users SET ad_interstitial_remaining=?, ad_interstitial_refill=?, "
+            "ad_popup_remaining=?, ad_popup_refill=? WHERE user_id=?",
+            (AD_CONFIG["interstitial"]["hourly_limit"], now,
+             AD_CONFIG["popup"]["hourly_limit"], now, user_id),
+        )
+        conn.commit()
+
+
+def get_user_claimed_tasks(user_id: int):
+    with _lock, _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT t.id, t.title_ar, t.category, t.reward, c.claimed_at "
+            "FROM user_task_claims c JOIN tasks t ON t.id = c.task_id "
+            "WHERE c.user_id=? ORDER BY c.claimed_at DESC", (user_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def admin_unclaim_task(user_id: int, task_id: int):
+    with _lock, _get_conn() as conn:
+        conn.execute(
+            "DELETE FROM user_task_claims WHERE user_id=? AND task_id=?", (user_id, task_id)
+        )
+        conn.commit()
