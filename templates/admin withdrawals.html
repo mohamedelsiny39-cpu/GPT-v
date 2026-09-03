@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>طلبات السحب - CanCel</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-wrap">
+
+  <header class="admin-header">
+    <h1>طلبات السحب</h1>
+    <div class="header-links">
+      <a href="{{ url_for('admin_dashboard') }}" class="nav-link">اللاعبين</a>
+      <a href="{{ url_for('admin_tasks') }}" class="nav-link">المهام</a>
+      <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
+    </div>
+  </header>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>اللاعب</th><th>الطريقة</th><th>البيانات</th>
+          <th>المبلغ ($)</th><th>الحالة</th><th>من كام</th><th>إجراء</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for w in withdrawals %}
+        <tr>
+          <td class="mono">{{ w.id }}</td>
+          <td>{{ w.first_name or "—" }} <span class="mono muted">#{{ w.user_id }}</span></td>
+          <td class="mono">{{ "فودافون كاش" if w.method == "vodafone_cash" else "FaucetPay" }}</td>
+          <td class="mono">{{ w.target }}</td>
+          <td class="mono">{{ "%.2f"|format(w.amount_usd) }}</td>
+          <td>
+            {% if w.status == "pending" %}<span class="status-pending">⏳ قيد الانتظار</span>
+            {% elif w.status == "paid" %}<span class="status-paid">✅ تم الدفع</span>
+            {% else %}<span class="status-rejected">❌ مرفوض</span>{% endif %}
+          </td>
+          <td class="mono muted">{{ ((now - w.created_at) / 3600) | round(1) }} س</td>
+          <td class="actions-cell">
+            {% if w.status == "pending" %}
+            <form method="post" action="{{ url_for('admin_withdrawals_status', withdrawal_id=w.id) }}">
+              <input type="hidden" name="status" value="paid" />
+              <button type="submit" class="small-btn save-btn">تم الدفع</button>
+            </form>
+            <form method="post" action="{{ url_for('admin_withdrawals_status', withdrawal_id=w.id) }}">
+              <input type="hidden" name="status" value="rejected" />
+              <button type="submit" class="small-btn danger-btn">رفض</button>
+            </form>
+            {% else %}
+            <form method="post" action="{{ url_for('admin_withdrawals_status', withdrawal_id=w.id) }}">
+              <input type="hidden" name="status" value="pending" />
+              <button type="submit" class="small-btn">رجّع قيد الانتظار</button>
+            </form>
+            {% endif %}
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="muted" style="text-align:center;">مفيش طلبات سحب لسه</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
