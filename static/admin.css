@@ -217,6 +217,10 @@ tbody tr:hover { background: rgba(139,92,246,0.06); }
   margin-top: 10px;
 }
 
+.status-pending { color: var(--gold); font-size: 11.5px; }
+.status-paid { color: var(--teal); font-size: 11.5px; }
+.status-rejected { color: #ff6b6b; font-size: 11.5px; }
+
 .edit-input {
   display: block;
   width: 100%;
