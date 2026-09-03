@@ -213,8 +213,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-btn {
-  width: 120px;
-  height: 120px;
+  width: 195px;
+  height: 195px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -400,121 +400,152 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 .per-tap-note { text-align: center; color: var(--text-muted); font-size: 11px; margin-top: 8px; }
 .per-tap-note span { color: var(--gold); font-weight: 700; }
 
-/* ===== City screen (skyline) ===== */
+/* ===== عنوان عام لكل الشاشات (city-header اسم قديم، لسه مستخدم في كذا تاب) ===== */
 .city-header { text-align: center; margin-bottom: 14px; }
 .city-header h2 { font-family: var(--font-display); font-size: 21px; margin: 4px 0 4px; }
 .city-header p { color: var(--text-muted); font-size: 12px; margin: 0; }
 
-.skyline {
-  display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 130px;
-  padding: 26px 4px 10px;
-  border-bottom: 2px solid rgba(139, 92, 246, 0.2);
-  margin-bottom: 14px;
-  background: linear-gradient(180deg, rgba(139,92,246,0.08), transparent);
-  border-radius: 12px 12px 0 0;
-}
+/* ===== أرض المنجم (تاب الأرباح) ===== */
+.earn-stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
 
-.sky-building {
-  flex: 1;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  border-radius: 8px 8px 0 0;
+.mine-yard {
   position: relative;
-  min-height: 14px;
-  transition: height 0.6s cubic-bezier(.34,1.56,.64,1);
-  font-size: 20px;
-  padding-bottom: 4px;
-  overflow: visible;
-}
-.sky-building.locked { background: rgba(255,255,255,0.04); }
-.sky-building.building {
-  background: linear-gradient(180deg, rgba(245,185,66,0.35), rgba(245,185,66,0.1));
-  animation: buildingPulse 1.6s ease-in-out infinite;
-}
-.sky-building.built {
-  background: linear-gradient(180deg, var(--purple), #5b3fd6);
-  animation: builtGlow 3s ease-in-out infinite;
-}
-.sky-building.just-built { animation: justBuilt 0.9s ease-out; }
-
-/* رافعة بناء فوق المبنى اللي بيتبني دلوقتي */
-.sky-building.building::before {
-  content: "🏗️";
-  position: absolute;
-  top: -22px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 15px;
-  animation: craneSwing 2.2s ease-in-out infinite;
-}
-@keyframes craneSwing {
-  0%, 100% { transform: translateX(-50%) rotate(-8deg); }
-  50% { transform: translateX(-50%) rotate(8deg); }
-}
-
-/* غبار/شرر متصاعد من المبنى قيد الإنشاء */
-.sky-building.building::after {
-  content: "";
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--gold-2);
-  box-shadow: 0 0 6px rgba(245,185,66,0.8);
-  animation: dustRise 1.8s ease-out infinite;
-}
-@keyframes dustRise {
-  0% { opacity: 0; transform: translate(-50%, 0) scale(0.6); }
-  30% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -26px) scale(1.1); }
-}
-
-@keyframes buildingPulse {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.35); }
-}
-@keyframes builtGlow {
-  0%, 100% { box-shadow: 0 0 10px rgba(139, 92, 246, 0.4); }
-  50% { box-shadow: 0 0 20px rgba(139, 92, 246, 0.75); }
-}
-@keyframes justBuilt {
-  0% { transform: scale(1); }
-  30% { transform: scale(1.25) translateY(-8px); }
-  60% { transform: scale(0.95); }
-  100% { transform: scale(1); }
-}
-
-.city-list { display: flex; flex-direction: column; gap: 8px; }
-.city-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  background: var(--surface);
-  border-radius: 12px;
-  padding: 10px 12px;
-  border: 1px solid transparent;
-}
-.city-row.building { border-color: rgba(245, 185, 66, 0.4); }
-.city-row.built { border-color: rgba(139, 92, 246, 0.35); }
-.city-row-icon { font-size: 22px; width: 30px; text-align: center; }
-.city-row-info { flex: 1; min-width: 0; }
-.city-row-name { font-weight: 700; font-size: 13px; }
-.city-row-range { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
-.city-row-bar {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--surface-2);
+  height: 150px;
+  border-radius: 16px;
   overflow: hidden;
-  margin-top: 5px;
+  margin-bottom: 16px;
+  background:
+    radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.16), transparent 65%),
+    linear-gradient(180deg, #14172a 0%, #0e1020 100%);
+  border: 1px solid rgba(139, 92, 246, 0.2);
 }
-.city-row-bar-fill { height: 100%; background: var(--gold); }
-.city-row-status { font-size: 18px; }
+.mine-ground {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 34px;
+  background:
+    repeating-linear-gradient(90deg, rgba(245,185,66,0.06) 0 2px, transparent 2px 22px),
+    linear-gradient(180deg, rgba(139,92,246,0.12), rgba(20,23,42,0.4));
+  border-top: 1px solid rgba(245, 185, 66, 0.18);
+}
+.mine-ghost {
+  position: absolute;
+  font-size: 26px;
+  opacity: 0.16;
+  filter: grayscale(1);
+}
+.mine-building {
+  position: absolute;
+  left: 50%;
+  bottom: 34px;
+  transform: translateX(-50%);
+  font-size: 34px;
+  filter: drop-shadow(0 0 10px rgba(245, 185, 66, 0.5));
+  animation: mineBuildingBob 3s ease-in-out infinite;
+}
+@keyframes mineBuildingBob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-4px); }
+}
+.mine-walker {
+  position: absolute;
+  bottom: 32px;
+  font-size: 15px;
+  opacity: 0.85;
+}
+.w1 { animation: walkRight 9s linear infinite; }
+.w2 { animation: walkLeft 12s linear infinite; animation-delay: 1.5s; }
+.w3 { animation: walkRight 15s linear infinite; animation-delay: 4s; }
+@keyframes walkRight {
+  0% { left: -8%; transform: scaleX(1); }
+  49% { transform: scaleX(1); }
+  50% { left: 92%; transform: scaleX(-1); }
+  99% { transform: scaleX(-1); }
+  100% { left: -8%; transform: scaleX(1); }
+}
+@keyframes walkLeft {
+  0% { left: 92%; transform: scaleX(-1); }
+  49% { transform: scaleX(-1); }
+  50% { left: -8%; transform: scaleX(1); }
+  99% { transform: scaleX(1); }
+  100% { left: 92%; transform: scaleX(-1); }
+}
+
+/* ===== عداد التعدين ===== */
+.mining-card {
+  text-align: center;
+  background: linear-gradient(160deg, rgba(52,217,196,0.12), rgba(139,92,246,0.08));
+  border: 1px solid rgba(52, 217, 196, 0.3);
+  border-radius: 16px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.mining-counter {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 20px;
+  color: var(--teal);
+  text-shadow: 0 0 12px rgba(52, 217, 196, 0.4);
+  margin-bottom: 4px;
+}
+.mining-timer {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.mining-btn {
+  background: linear-gradient(90deg, var(--teal), var(--purple));
+  color: #fff;
+  border: none;
+  border-radius: 12px;
+  padding: 11px 24px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.mining-btn:disabled { opacity: 0.55; background: var(--surface-2); color: var(--text-muted); }
+.mining-btn:active:not(:disabled) { transform: scale(0.97); }
+
+/* ===== التطويرات ===== */
+.upgrades-title { font-family: var(--font-display); font-weight: 700; font-size: 15px; margin-bottom: 10px; text-align: center; }
+.upgrades-row { display: flex; gap: 8px; margin-bottom: 6px; }
+.upgrade-card {
+  flex: 1;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid rgba(245, 185, 66, 0.3);
+  border-radius: 14px;
+  padding: 14px 8px;
+  text-align: center;
+  overflow: hidden;
+}
+.upgrade-icon { font-size: 22px; margin-bottom: 4px; }
+.upgrade-name { font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+.upgrade-detail { font-family: var(--font-mono); font-size: 10px; color: var(--gold); margin-bottom: 8px; }
+.upgrade-btn {
+  background: var(--gold);
+  color: #3a2600;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 10px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 10.5px;
+  cursor: pointer;
+  width: 100%;
+}
+.upgrade-btn:disabled { opacity: 0.5; }
+.upgrade-btn.purchased { background: rgba(52,217,196,0.2); color: var(--teal); }
+.upgrade-card.locked { border-color: rgba(255,255,255,0.08); }
+.upgrade-card.locked .upgrade-icon { opacity: 0.4; }
+.upgrade-blur-overlay {
+  position: absolute;
+  inset: 0;
+  backdrop-filter: blur(3px);
+  background: rgba(9, 10, 20, 0.35);
+}
 
 /* ===== Tasks / Achievements ===== */
 .sub-tabs {
@@ -842,38 +873,118 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
   color: var(--teal);
 }
 
-.wallet-card {
-  text-align: center;
+/* ===== المحفظة الحقيقية ===== */
+.real-wallet-card {
   background: var(--surface);
-  border-radius: 22px;
-  padding: 26px 24px;
+  border-radius: 20px;
+  padding: 18px;
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
-.wallet-icon { font-size: 34px; margin-bottom: 8px; }
-.wallet-balance-blur {
-  font-family: var(--font-mono);
-  font-size: 20px;
+
+.currency-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 14px;
+}
+.currency-btn {
+  flex: 1;
+  background: none;
+  border: none;
   color: var(--text-muted);
-  filter: blur(4px);
-  user-select: none;
-  margin-bottom: 12px;
-}
-.soon-text {
-  font-family: var(--font-display);
+  padding: 9px;
+  border-radius: 9px;
+  font-family: var(--font-body);
   font-weight: 700;
-  font-size: 20px;
-  background: linear-gradient(90deg, var(--purple), var(--teal));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  margin: 0 0 8px;
+  font-size: 12.5px;
+  cursor: pointer;
 }
-.dots span { animation: blink 1.4s infinite; opacity: 0; }
-.dots span:nth-child(1) { animation-delay: 0s; }
-.dots span:nth-child(2) { animation-delay: 0.2s; }
-.dots span:nth-child(3) { animation-delay: 0.4s; }
-@keyframes blink { 0%, 100% { opacity: 0; } 50% { opacity: 1; } }
-.wallet-sub { color: var(--text-muted); font-size: 12px; line-height: 1.7; margin: 0; }
+.currency-btn.active { background: linear-gradient(90deg, var(--gold), var(--gold-2)); color: #3a2600; }
+
+.wallet-balance-big {
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 32px;
+  color: var(--text);
+  margin-bottom: 18px;
+  animation: balancePulse 2.4s ease-in-out infinite;
+}
+.wallet-balance-big span { font-size: 16px; color: var(--text-muted); font-family: var(--font-body); }
+@keyframes balancePulse {
+  0%, 100% { text-shadow: 0 0 0 rgba(245, 185, 66, 0); }
+  50% { text-shadow: 0 0 18px rgba(245, 185, 66, 0.35); }
+}
+
+.withdraw-methods-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.withdraw-method-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: var(--text);
+  padding: 12px 6px;
+  border-radius: 12px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.withdraw-method-btn.selected { border-color: var(--teal); background: rgba(52,217,196,0.12); color: var(--teal); }
+.wm-icon { font-size: 20px; }
+
+.withdraw-form {
+  background: var(--surface-2);
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 12px;
+  animation: fadeInDown 0.3s ease both;
+}
+.withdraw-form-title { font-size: 12px; font-weight: 700; margin-bottom: 10px; color: var(--teal); }
+.withdraw-input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 9px;
+  padding: 10px 12px;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+.withdraw-min-note { font-size: 10.5px; color: var(--text-muted); margin-bottom: 10px; }
+.withdraw-submit-btn {
+  width: 100%;
+  background: var(--teal);
+  color: #06342e;
+  border: none;
+  border-radius: 10px;
+  padding: 11px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+.withdraw-submit-btn:disabled { opacity: 0.5; }
+
+.withdraw-history { display: flex; flex-direction: column; gap: 6px; }
+.withdraw-history-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-2);
+  border-radius: 9px;
+  padding: 8px 11px;
+  font-size: 11px;
+}
+.wh-status-pending { color: var(--gold); }
+.wh-status-paid { color: var(--teal); }
+.wh-status-rejected { color: #ff6b6b; }
 
 /* ===== Tab bar ===== */
 .tabbar {
@@ -947,8 +1058,8 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .coin-glow-ring, .particle, .spark, .dots span, .sky-building.building,
-  .sky-building.built, .sky-building.building::before, .sky-building.building::after {
+  .coin-glow-ring, .particle, .spark,
+  .mine-walker, .mine-building, .mining-counter {
     animation: none !important;
   }
 }
