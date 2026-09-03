@@ -93,6 +93,7 @@ const els = {
   refCopyBtn: document.getElementById("refCopyBtn"),
   refShareBtn: document.getElementById("refShareBtn"),
   refFriendsList: document.getElementById("refFriendsList"),
+  podium: document.getElementById("podium"),
   boardList: document.getElementById("boardList"),
   myRank: document.getElementById("myRank"),
   airdropConditions: document.getElementById("airdropConditions"),
@@ -664,15 +665,34 @@ async function loadLeaderboard() {
   const res = await fetch(`/api/leaderboard?user_id=${user.id}`);
   const data = await res.json();
   els.myRank.innerHTML = data.my_rank ? `${t("yourRankNow")}: <b>#${data.my_rank}</b>` : "";
+
+  const top3 = data.leaderboard.filter((p) => p.rank <= 3);
+  const rest = data.leaderboard.filter((p) => p.rank > 3);
+
+  // البوديوم
+  els.podium.innerHTML = "";
+  top3.forEach((p) => {
+    const card = document.createElement("div");
+    card.className = `podium-card place-${p.rank}`;
+    const avatarContent = p.photo_url ? `<img src="${p.photo_url}">` : (p.first_name || "?").charAt(0);
+    card.innerHTML = `
+      ${p.rank === 1 ? `<span class="podium-crown">👑</span>` : ""}
+      <span class="podium-avatar">${avatarContent}</span>
+      <span class="podium-rank-badge">${p.rank === 1 ? "#1" : p.rank === 2 ? "#2" : "#3"}</span>
+      <span class="podium-name">${p.first_name}</span>
+      <span class="podium-coins">${formatNum(p.coins)}</span>
+    `;
+    els.podium.appendChild(card);
+  });
+
+  // باقي القايمة (من 4 لحد 100)
   els.boardList.innerHTML = "";
-  data.leaderboard.forEach((p) => {
+  rest.forEach((p) => {
     const row = document.createElement("div");
-    const topClass = p.rank <= 3 ? `top${p.rank}` : "";
-    row.className = `board-row ${topClass}`;
-    const medal = p.rank === 1 ? "🥇" : p.rank === 2 ? "🥈" : p.rank === 3 ? "🥉" : p.rank;
+    row.className = "board-row";
     const avatarContent = p.photo_url ? `<img src="${p.photo_url}">` : (p.first_name || "?").charAt(0);
     row.innerHTML = `
-      <span class="board-rank">${medal}</span>
+      <span class="board-rank">${p.rank}</span>
       <span class="board-avatar">${avatarContent}</span>
       <span class="board-name">${p.first_name}</span>
       <span class="board-coins">${formatNum(p.coins)} CCL</span>
