@@ -12,6 +12,14 @@ MAX_ENERGY = 100
 FULL_REFILL_SECONDS = 3600  # الطاقة بترجع كاملة كل ساعة
 MAX_LEVEL = 100
 
+# ---------- التعدين المجاني والمحفظة ----------
+MINING_CYCLE_SECONDS = 86400  # 24 ساعة
+MINING_BASE_RATE_USD = 0.01   # في اليوم، قبل أي تطوير
+MINING_UPGRADE1_RATE_USD = 0.02
+MINING_UPGRADE1_COST_CCL = 5000
+EGP_PER_USD = 50  # معدل عرض ثابت (1$ = 50 جنيه) — مش سعر صرف حي
+WITHDRAW_MIN_USD = 0.10  # يعادل 5 جنيه بالمعدل الثابت فوق
+
 REFERRAL_REWARD = 500
 REFERRAL_SIGNUP_BONUS = 100
 
@@ -87,7 +95,10 @@ def init_db():
                 minigame_remaining INTEGER NOT NULL DEFAULT 10,
                 minigame_refill REAL NOT NULL DEFAULT 0,
                 checkin_streak INTEGER NOT NULL DEFAULT 0,
-                last_checkin_date TEXT NOT NULL DEFAULT ''
+                last_checkin_date TEXT NOT NULL DEFAULT '',
+                wallet_balance_usd REAL NOT NULL DEFAULT 0,
+                mining_start_ts REAL NOT NULL DEFAULT 0,
+                mining_rate_level INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -104,10 +115,27 @@ def init_db():
             "minigame_refill": "REAL NOT NULL DEFAULT 0",
             "checkin_streak": "INTEGER NOT NULL DEFAULT 0",
             "last_checkin_date": "TEXT NOT NULL DEFAULT ''",
+            "wallet_balance_usd": "REAL NOT NULL DEFAULT 0",
+            "mining_start_ts": "REAL NOT NULL DEFAULT 0",
+            "mining_rate_level": "INTEGER NOT NULL DEFAULT 0",
         }
         for col, coltype in migrations.items():
             if col not in existing_cols:
                 conn.execute(f"ALTER TABLE users ADD COLUMN {col} {coltype}")
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS withdrawals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                method TEXT NOT NULL,
+                target TEXT NOT NULL,
+                amount_usd REAL NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                created_at REAL NOT NULL
+            )
+            """
+        )
 
         conn.execute(
             """
@@ -838,4 +866,125 @@ def admin_unclaim_task(user_id: int, task_id: int):
         conn.execute(
             "DELETE FROM user_task_claims WHERE user_id=? AND task_id=?", (user_id, task_id)
         )
+        conn.commit()
+
+
+# ---------- التعدين المجاني ----------
+
+def mining_rate_usd(rate_level: int) -> float:
+    return MINING_UPGRADE1_RATE_USD if rate_level >= 1 else MINING_BASE_RATE_USD
+
+
+def get_mining_status(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return None
+        now = time.time()
+        rate = mining_rate_usd(row["mining_rate_level"])
+        started = row["mining_start_ts"] > 0
+        elapsed = min(now - row["mining_start_ts"], MINING_CYCLE_SECONDS) if started else 0
+        accrued = (elapsed / MINING_CYCLE_SECONDS) * rate if started else 0
+        ready = started and (now - row["mining_start_ts"]) >= MINING_CYCLE_SECONDS
+        seconds_left = max(0, MINING_CYCLE_SECONDS - (now - row["mining_start_ts"])) if started else 0
+        return {
+            "started": started,
+            "ready_to_collect": ready,
+            "seconds_left": int(seconds_left),
+            "accrued_usd": round(accrued, 8),
+            "rate_usd_per_day": rate,
+            "upgrade1_purchased": row["mining_rate_level"] >= 1,
+            "wallet_balance_usd": row["wallet_balance_usd"],
+        }
+
+
+def start_or_collect_mining(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+        now = time.time()
+
+        if row["mining_start_ts"] <= 0:
+            conn.execute("UPDATE users SET mining_start_ts=? WHERE user_id=?", (now, user_id))
+            conn.commit()
+            return {"action": "started"}
+
+        elapsed = now - row["mining_start_ts"]
+        if elapsed < MINING_CYCLE_SECONDS:
+            return {"error": "still_running", "seconds_left": int(MINING_CYCLE_SECONDS - elapsed)}
+
+        rate = mining_rate_usd(row["mining_rate_level"])
+        new_balance = row["wallet_balance_usd"] + rate
+        conn.execute(
+            "UPDATE users SET wallet_balance_usd=?, mining_start_ts=? WHERE user_id=?",
+            (new_balance, now, user_id),
+        )
+        conn.commit()
+        return {"action": "collected", "collected_usd": rate, "wallet_balance_usd": new_balance}
+
+
+def purchase_mining_upgrade1(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+        if row["mining_rate_level"] >= 1:
+            return {"error": "already_purchased"}
+        if row["coins"] < MINING_UPGRADE1_COST_CCL:
+            return {"error": "not_enough_coins"}
+        conn.execute(
+            "UPDATE users SET coins=coins-?, mining_rate_level=1 WHERE user_id=?",
+            (MINING_UPGRADE1_COST_CCL, user_id),
+        )
+        conn.commit()
+        return {"ok": True}
+
+
+# ---------- السحب ----------
+
+def create_withdrawal(user_id: int, method: str, target: str, amount_usd: float):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+        if amount_usd < WITHDRAW_MIN_USD:
+            return {"error": "below_minimum"}
+        if amount_usd > row["wallet_balance_usd"]:
+            return {"error": "insufficient_balance"}
+        if not target or not target.strip():
+            return {"error": "target_required"}
+
+        new_balance = row["wallet_balance_usd"] - amount_usd
+        conn.execute("UPDATE users SET wallet_balance_usd=? WHERE user_id=?", (new_balance, user_id))
+        conn.execute(
+            "INSERT INTO withdrawals (user_id, method, target, amount_usd, status, created_at) "
+            "VALUES (?, ?, ?, ?, 'pending', ?)",
+            (user_id, method, target.strip(), amount_usd, time.time()),
+        )
+        conn.commit()
+        return {"ok": True, "wallet_balance_usd": new_balance}
+
+
+def get_user_withdrawals(user_id: int, limit=20):
+    with _lock, _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM withdrawals WHERE user_id=? ORDER BY created_at DESC LIMIT ?",
+            (user_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def admin_get_withdrawals():
+    with _lock, _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT w.*, u.first_name FROM withdrawals w JOIN users u ON u.user_id = w.user_id "
+            "ORDER BY w.created_at DESC"
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def admin_set_withdrawal_status(withdrawal_id: int, status: str):
+    with _lock, _get_conn() as conn:
+        conn.execute("UPDATE withdrawals SET status=? WHERE id=?", (status, withdrawal_id))
         conn.commit()
