@@ -68,7 +68,6 @@ def build_state(row):
         "coins_per_tap": db.coins_per_tap(level),
         "next_level_at": next_th,
         "level_progress": progress,
-        "squares": db.city_state(coins, level),
         "total_taps": row["total_taps"],
         "ads_watched": row["ads_watched"],
         "ads": db.get_ad_status(row["user_id"]),
@@ -231,6 +230,86 @@ def api_airdrop():
     return jsonify(status)
 
 
+# ---------- التعدين والمحفظة ----------
+
+@app.route("/api/mining")
+def api_mining():
+    user_id = request.args.get("user_id", type=int)
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    db.get_or_create_user(user_id)
+    status = db.get_mining_status(user_id)
+    status["egp_per_usd"] = db.EGP_PER_USD
+    status["upgrade1_cost"] = db.MINING_UPGRADE1_COST_CCL
+    status["upgrade1_rate_usd"] = db.MINING_UPGRADE1_RATE_USD
+    return jsonify(status)
+
+
+@app.route("/api/mining/collect", methods=["POST"])
+def api_mining_collect():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    db.get_or_create_user(user_id, data.get("first_name", ""), data.get("photo_url", ""))
+    result = db.start_or_collect_mining(user_id)
+    if "error" in result:
+        return jsonify(result), 400
+    status = db.get_mining_status(user_id)
+    status["egp_per_usd"] = db.EGP_PER_USD
+    status["action"] = result["action"]
+    if result["action"] == "collected":
+        status["collected_usd"] = result["collected_usd"]
+    return jsonify(status)
+
+
+@app.route("/api/mining/upgrade1", methods=["POST"])
+def api_mining_upgrade1():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    db.get_or_create_user(user_id)
+    result = db.purchase_mining_upgrade1(user_id)
+    if "error" in result:
+        return jsonify(result), 400
+    row = db.get_or_create_user(user_id)
+    state = build_state(row)
+    status = db.get_mining_status(user_id)
+    status["egp_per_usd"] = db.EGP_PER_USD
+    status["coins"] = state["coins"]
+    return jsonify(status)
+
+
+@app.route("/api/withdraw", methods=["POST"])
+def api_withdraw():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    method = data.get("method")
+    target = data.get("target", "")
+    amount_usd = data.get("amount_usd")
+    if not user_id or not method or amount_usd is None:
+        return jsonify({"error": "missing_fields"}), 400
+    try:
+        amount_usd = float(amount_usd)
+    except (TypeError, ValueError):
+        return jsonify({"error": "invalid_amount"}), 400
+
+    db.get_or_create_user(user_id)
+    result = db.create_withdrawal(user_id, method, target, amount_usd)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(result)
+
+
+@app.route("/api/withdrawals")
+def api_withdrawals():
+    user_id = request.args.get("user_id", type=int)
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    return jsonify(db.get_user_withdrawals(user_id))
+
+
 # ---------- الأدمن ----------
 
 def admin_required(f):
@@ -381,6 +460,21 @@ def admin_tasks_toggle(task_id):
 def admin_tasks_delete(task_id):
     db.admin_delete_task(task_id)
     return redirect(url_for("admin_tasks"))
+
+
+@app.route("/admin/withdrawals")
+@admin_required
+def admin_withdrawals():
+    withdrawals = db.admin_get_withdrawals()
+    return render_template("admin_withdrawals.html", withdrawals=withdrawals, now=time.time())
+
+
+@app.route("/admin/withdrawals/<int:withdrawal_id>/status", methods=["POST"])
+@admin_required
+def admin_withdrawals_status(withdrawal_id):
+    new_status = request.form.get("status", "pending")
+    db.admin_set_withdrawal_status(withdrawal_id, new_status)
+    return redirect(url_for("admin_withdrawals"))
 
 
 if __name__ == "__main__":
