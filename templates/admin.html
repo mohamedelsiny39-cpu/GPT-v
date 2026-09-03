@@ -57,6 +57,7 @@
           <th>دعوات</th>
           <th>آخر نشاط</th>
           <th>User ID</th>
+          <th>تحكم كامل</th>
         </tr>
       </thead>
       <tbody>
@@ -78,6 +79,7 @@
           <td class="mono">{{ u.referral_count }}</td>
           <td class="mono muted">{{ ((now - u.last_active) / 60) | round(0, 'floor') | int }} د</td>
           <td class="mono muted">{{ u.user_id }}</td>
+          <td><a href="{{ url_for('admin_user_detail', user_id=u.user_id) }}" class="nav-link small-nav">تفاصيل</a></td>
         </tr>
         {% endfor %}
       </tbody>
