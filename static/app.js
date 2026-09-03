@@ -49,8 +49,6 @@ let S = {
   level: 1, coins_per_tap: 1, squares: [], total_taps: 0, ads_watched: 0,
   ads: {},
 };
-let prevSquares = null;
-
 let pendingTaps = 0;
 let sendTimer = null;
 let sendInFlight = false;
@@ -69,8 +67,14 @@ const els = {
   perTap: document.getElementById("perTap"),
   coinBtn: document.getElementById("coinBtn"),
   particles: document.getElementById("particles"),
-  skyline: document.getElementById("skyline"),
-  cityList: document.getElementById("cityList"),
+  earnRate: document.getElementById("earnRate"),
+  earnBalance: document.getElementById("earnBalance"),
+  miningCounter: document.getElementById("miningCounter"),
+  miningTimer: document.getElementById("miningTimer"),
+  miningBtn: document.getElementById("miningBtn"),
+  upgrade1Card: document.getElementById("upgrade1Card"),
+  upgrade1Detail: document.getElementById("upgrade1Detail"),
+  upgrade1Btn: document.getElementById("upgrade1Btn"),
   levelBarNum: document.getElementById("levelBarNum"),
   levelBarNext: document.getElementById("levelBarNext"),
   levelBarFill: document.getElementById("levelBarFill"),
@@ -153,44 +157,6 @@ function renderAdButtons() {
   }
 }
 
-const PLOT_ICONS = ["⛺", "🏠", "🏡", "🏢", "🏬", "🕌", "🎡", "🗼", "🏟️", "🌆"];
-
-function renderCity() {
-  if (!S.squares || S.squares.length === 0) return;
-
-  els.skyline.innerHTML = "";
-  S.squares.forEach((sq) => {
-    const div = document.createElement("div");
-    const heightPct = sq.status === "locked" ? 6 : Math.max(10, sq.progress * 100);
-    const wasNotBuilt = prevSquares && prevSquares[sq.index - 1] && prevSquares[sq.index - 1].status !== "built";
-    div.className = `sky-building ${sq.status}` + (sq.status === "built" && wasNotBuilt ? " just-built" : "");
-    div.style.height = `${heightPct}%`;
-    div.textContent = sq.status === "locked" ? "" : sq.icon;
-    els.skyline.appendChild(div);
-    if (sq.status === "built" && wasNotBuilt) {
-      showToast(`${t("buildingCompleted")} ${sq.name}`);
-    }
-  });
-
-  els.cityList.innerHTML = "";
-  S.squares.forEach((sq) => {
-    const row = document.createElement("div");
-    row.className = `city-row ${sq.status}`;
-    const statusIcon = sq.status === "built" ? "✅" : sq.status === "building" ? "🚧" : "🔒";
-    row.innerHTML = `
-      <span class="city-row-icon">${sq.icon}</span>
-      <div class="city-row-info">
-        <div class="city-row-name">${sq.name} <span style="color:var(--text-muted);font-weight:400;">(${sq.level_range})</span></div>
-        ${sq.status !== "locked" ? `<div class="city-row-bar"><div class="city-row-bar-fill" style="width:${Math.round(sq.progress * 100)}%"></div></div>` : ""}
-      </div>
-      <span class="city-row-status">${statusIcon}</span>
-    `;
-    els.cityList.appendChild(row);
-  });
-
-  prevSquares = S.squares.map((s) => ({ status: s.status }));
-}
-
 function spawnParticle() {
   const p = document.createElement("span");
   p.className = "particle";
@@ -231,12 +197,11 @@ function applyServerState(state) {
   S = {
     coins: state.coins, energy: state.energy, max_energy: state.max_energy,
     seconds_to_refill: state.seconds_to_refill, level: state.level,
-    coins_per_tap: state.coins_per_tap, squares: state.squares,
+    coins_per_tap: state.coins_per_tap,
     total_taps: state.total_taps, ads_watched: state.ads_watched,
     ads: state.ads || {},
   };
   renderCore();
-  renderCity();
 }
 
 async function fetchState() {
@@ -701,6 +666,251 @@ async function loadLeaderboard() {
   });
 }
 
+// ===== التعدين المجاني والمحفظة الحقيقية =====
+let currentCurrency = localStorage.getItem("cc_currency") || (getLang() === "en" ? "usd" : "egp");
+let mining = {
+  started: false, ready: false, secondsLeft: 0, accrued: 0,
+  rate: 0.01, upgrade1Purchased: false, upgrade1Cost: 5000, upgrade1Rate: 0.02,
+  walletBalance: 0, egpPerUsd: 50,
+};
+let selectedWithdrawMethod = null;
+
+function formatCurrency(amountUsd, decimals = 2) {
+  if (currentCurrency === "egp") {
+    return `${(amountUsd * mining.egpPerUsd).toFixed(decimals)} ${t("egpShort")}`;
+  }
+  return `$${amountUsd.toFixed(decimals)}`;
+}
+
+function formatCountdown(totalSeconds) {
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${d}${t("dayShort")} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+async function loadMining() {
+  const res = await fetch(`/api/mining?user_id=${user.id}`);
+  const data = await res.json();
+  mining = {
+    started: data.started, ready: data.ready_to_collect, secondsLeft: data.seconds_left,
+    accrued: data.accrued_usd, rate: data.rate_usd_per_day, upgrade1Purchased: data.upgrade1_purchased,
+    upgrade1Cost: data.upgrade1_cost, upgrade1Rate: data.upgrade1_rate_usd,
+    walletBalance: data.wallet_balance_usd, egpPerUsd: data.egp_per_usd,
+  };
+  renderMining();
+}
+
+function renderMining() {
+  els.earnRate.textContent = formatCurrency(mining.rate) + ` / ${t("day")}`;
+  els.earnBalance.textContent = formatCurrency(mining.walletBalance);
+  els.miningCounter.textContent = formatCurrency(mining.accrued, 8);
+
+  if (!mining.started) {
+    els.miningTimer.textContent = "--:--:--";
+    els.miningBtn.textContent = t("startFreeMining");
+    els.miningBtn.disabled = false;
+  } else if (mining.ready) {
+    els.miningTimer.textContent = t("readyToCollect");
+    els.miningBtn.textContent = t("collectAndRestart");
+    els.miningBtn.disabled = false;
+  } else {
+    els.miningTimer.textContent = formatCountdown(mining.secondsLeft);
+    els.miningBtn.textContent = t("miningRunning");
+    els.miningBtn.disabled = true;
+  }
+
+  els.upgrade1Detail.textContent = formatCurrency(mining.upgrade1Rate) + ` / ${t("day")}`;
+  if (mining.upgrade1Purchased) {
+    els.upgrade1Btn.textContent = t("purchased");
+    els.upgrade1Btn.disabled = true;
+    els.upgrade1Btn.classList.add("purchased");
+  } else {
+    els.upgrade1Btn.textContent = `${t("buyFor")} ${formatNum(mining.upgrade1Cost)}`;
+    els.upgrade1Btn.disabled = S.coins < mining.upgrade1Cost;
+    els.upgrade1Btn.classList.remove("purchased");
+  }
+}
+
+els.miningBtn.addEventListener("click", async () => {
+  els.miningBtn.disabled = true;
+  try {
+    const res = await fetch("/api/mining/collect", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, first_name: user.first_name, photo_url: user.photo_url }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      if (data.action === "collected") {
+        showToast(`+${formatCurrency(data.collected_usd, 4)} 💰`);
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+      }
+      mining = {
+        started: data.started, ready: data.ready_to_collect, secondsLeft: data.seconds_left,
+        accrued: data.accrued_usd, rate: data.rate_usd_per_day, upgrade1Purchased: data.upgrade1_purchased,
+        upgrade1Cost: data.upgrade1_cost, upgrade1Rate: data.upgrade1_rate_usd,
+        walletBalance: data.wallet_balance_usd, egpPerUsd: data.egp_per_usd,
+      };
+      renderMining();
+    } else {
+      els.miningBtn.disabled = false;
+    }
+  } catch (e) {
+    els.miningBtn.disabled = false;
+  }
+});
+
+els.upgrade1Btn.addEventListener("click", async () => {
+  if (mining.upgrade1Purchased) return;
+  els.upgrade1Btn.disabled = true;
+  try {
+    const res = await fetch("/api/mining/upgrade1", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      S.coins = data.coins;
+      renderCore();
+      mining.upgrade1Purchased = data.upgrade1_purchased;
+      mining.rate = data.rate_usd_per_day;
+      renderMining();
+      showToast(`⚡ ${t("upgradePurchased")}`);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    } else {
+      els.upgrade1Btn.disabled = false;
+      if (data.error === "not_enough_coins") showToast(t("notEnoughCoins"));
+    }
+  } catch (e) {
+    els.upgrade1Btn.disabled = false;
+  }
+});
+
+// عداد التعدين الحي (بيتحدث كل ثانية محلياً، وبيتزامن مع السيرفر عند فتح التاب)
+setInterval(() => {
+  const screen = document.getElementById("screen-earnings");
+  if (!screen || screen.classList.contains("hidden")) return;
+  if (mining.started && !mining.ready) {
+    mining.secondsLeft = Math.max(0, mining.secondsLeft - 1);
+    mining.accrued += mining.rate / 86400;
+    if (mining.secondsLeft <= 0) mining.ready = true;
+    renderMining();
+  }
+}, 1000);
+
+// ===== المحفظة الحقيقية =====
+function renderWalletBalance() {
+  document.getElementById("walletBalanceBig").innerHTML =
+    currentCurrency === "egp"
+      ? `${(mining.walletBalance * mining.egpPerUsd).toFixed(2)} <span id="walletCurrencySymbol">${t("egpShort")}</span>`
+      : `${mining.walletBalance.toFixed(2)} <span id="walletCurrencySymbol">USD</span>`;
+}
+
+async function loadWallet() {
+  if (mining.egpPerUsd === undefined || mining.walletBalance === undefined) {
+    await loadMining();
+  }
+  renderWalletBalance();
+  loadWithdrawHistory();
+}
+
+document.querySelectorAll(".currency-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".currency-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentCurrency = btn.dataset.currency;
+    localStorage.setItem("cc_currency", currentCurrency);
+    renderWalletBalance();
+    renderMining();
+    updateWithdrawFormLabels();
+  });
+});
+
+const WITHDRAW_METHOD_LABELS = { vodafone_cash: "vodafoneCash", faucetpay: "FaucetPay" };
+
+function updateWithdrawFormLabels() {
+  if (!selectedWithdrawMethod) return;
+  const minNote = currentCurrency === "egp" ? "5.00 " + t("egpShort") : "$0.10";
+  document.getElementById("withdrawMinNote").textContent = `${t("minWithdraw")}: ${minNote}`;
+  document.getElementById("withdrawTarget").placeholder =
+    selectedWithdrawMethod === "vodafone_cash" ? t("phoneNumberPlaceholder") : t("faucetpayPlaceholder");
+  document.getElementById("withdrawAmount").placeholder =
+    currentCurrency === "egp" ? t("amountInEgp") : t("amountInUsd");
+}
+
+document.querySelectorAll(".withdraw-method-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".withdraw-method-btn").forEach((b) => b.classList.remove("selected"));
+    btn.classList.add("selected");
+    selectedWithdrawMethod = btn.dataset.method;
+    const label = btn.dataset.method === "vodafone_cash" ? t("vodafoneCash") : "FaucetPay";
+    document.getElementById("withdrawFormTitle").textContent = label;
+    document.getElementById("withdrawForm").classList.remove("hidden");
+    updateWithdrawFormLabels();
+  });
+});
+
+document.getElementById("withdrawSubmitBtn").addEventListener("click", async () => {
+  const target = document.getElementById("withdrawTarget").value.trim();
+  const amountRaw = parseFloat(document.getElementById("withdrawAmount").value);
+  if (!selectedWithdrawMethod || !target || !amountRaw || amountRaw <= 0) {
+    showToast(t("fillAllFields"));
+    return;
+  }
+  const amountUsd = currentCurrency === "egp" ? amountRaw / mining.egpPerUsd : amountRaw;
+
+  const btn = document.getElementById("withdrawSubmitBtn");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/withdraw", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, method: selectedWithdrawMethod, target, amount_usd: amountUsd }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      mining.walletBalance = data.wallet_balance_usd;
+      renderWalletBalance();
+      renderMining();
+      document.getElementById("withdrawTarget").value = "";
+      document.getElementById("withdrawAmount").value = "";
+      showToast(t("withdrawRequested"));
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+      loadWithdrawHistory();
+    } else {
+      if (data.error === "below_minimum") showToast(t("belowMinimum"));
+      else if (data.error === "insufficient_balance") showToast(t("insufficientBalance"));
+      else showToast(t("withdrawFailed"));
+    }
+  } catch (e) {
+    showToast(t("withdrawFailed"));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+async function loadWithdrawHistory() {
+  const res = await fetch(`/api/withdrawals?user_id=${user.id}`);
+  const list = await res.json();
+  const container = document.getElementById("withdrawHistory");
+  container.innerHTML = "";
+  list.forEach((w) => {
+    const row = document.createElement("div");
+    row.className = "withdraw-history-row";
+    const statusClass = `wh-status-${w.status}`;
+    const statusLabel = w.status === "paid" ? t("statusPaid") : w.status === "rejected" ? t("statusRejected") : t("statusPending");
+    const label = w.method === "vodafone_cash" ? t("vodafoneCash") : "FaucetPay";
+    row.innerHTML = `
+      <span>${label} · ${formatCurrency(w.amount_usd)}</span>
+      <span class="${statusClass}">${statusLabel}</span>
+    `;
+    container.appendChild(row);
+  });
+}
+
 // ===== الإيردروب =====
 async function loadAirdrop() {
   const res = await fetch(`/api/airdrop?user_id=${user.id}`);
@@ -738,9 +948,10 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     document.getElementById(`screen-${btn.dataset.tab}`).classList.remove("hidden");
 
     if (btn.dataset.tab === "tasks") loadTasks();
+    if (btn.dataset.tab === "earnings") loadMining();
     if (btn.dataset.tab === "referrals") loadReferrals();
     if (btn.dataset.tab === "leaderboard") loadLeaderboard();
-    if (btn.dataset.tab === "wallet") loadAirdrop();
+    if (btn.dataset.tab === "wallet") { loadAirdrop(); loadWallet(); }
   });
 });
 
