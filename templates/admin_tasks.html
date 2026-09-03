@@ -14,6 +14,7 @@
     <h1>إدارة المهام والإنجازات</h1>
     <div class="header-links">
       <a href="{{ url_for('admin_dashboard') }}" class="nav-link">اللاعبين</a>
+      <a href="{{ url_for('admin_withdrawals') }}" class="nav-link">طلبات السحب</a>
       <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
     </div>
   </header>
@@ -58,6 +59,11 @@
   </form>
 
   <h2 class="section-title">مهام موجودة</h2>
+
+  {% for task in tasks %}
+  <form id="edit-form-{{ task.id }}" method="post" action="{{ url_for('admin_tasks_edit', task_id=task.id) }}" style="display:none;"></form>
+  {% endfor %}
+
   <div class="table-wrap">
     <table>
       <thead>
@@ -71,16 +77,29 @@
         <tr>
           <td class="mono">{{ task.id }}</td>
           <td class="mono">{{ task.category }} / {{ task.task_type }}</td>
-          <td>{{ task.title_ar }}</td>
-          <td class="mono">{{ task.reward }}</td>
-          <td class="mono">{{ task.target or "—" }}</td>
-          <td class="mono muted small-cell">{{ task.url or task.channel_username or "—" }}</td>
+          <td>
+            <input type="text" name="title_ar" value="{{ task.title_ar }}" class="edit-input" form="edit-form-{{ task.id }}" />
+          </td>
+          <td>
+            <input type="number" name="reward" value="{{ task.reward }}" class="edit-input num-input" form="edit-form-{{ task.id }}" />
+          </td>
+          <td>
+            <input type="number" name="target" value="{{ task.target }}" class="edit-input num-input" form="edit-form-{{ task.id }}" />
+          </td>
+          <td>
+            <input type="text" name="url" value="{{ task.url }}" placeholder="الرابط" class="edit-input" form="edit-form-{{ task.id }}" />
+            <input type="text" name="channel_username" value="{{ task.channel_username }}" placeholder="يوزر القناة" class="edit-input" form="edit-form-{{ task.id }}" />
+          </td>
           <td>{{ "✅" if task.active else "🚫" }}</td>
           <td class="actions-cell">
-            <form method="post" action="{{ url_for('admin_tasks_toggle', task_id=task.id) }}">
+            <input type="hidden" name="title_en" value="{{ task.title_en }}" form="edit-form-{{ task.id }}" />
+            <input type="hidden" name="sort_order" value="{{ task.sort_order }}" form="edit-form-{{ task.id }}" />
+            <button type="submit" class="small-btn save-btn" form="edit-form-{{ task.id }}">حفظ</button>
+            <form method="post" action="{{ url_for('admin_tasks_toggle', task_id=task.id) }}" class="inline-mini-form">
               <button type="submit" class="small-btn">{{ "إيقاف" if task.active else "تفعيل" }}</button>
             </form>
             <form method="post" action="{{ url_for('admin_tasks_delete', task_id=task.id) }}"
+                  class="inline-mini-form"
                   onsubmit="return confirm('متأكد إنك عايز تمسح المهمة دي؟');">
               <button type="submit" class="small-btn danger-btn">حذف</button>
             </form>
