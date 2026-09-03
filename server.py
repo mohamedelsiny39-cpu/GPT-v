@@ -216,7 +216,7 @@ def api_referrals():
 @app.route("/api/leaderboard")
 def api_leaderboard():
     user_id = request.args.get("user_id", type=int)
-    board = db.get_leaderboard(20)
+    board = db.get_leaderboard(100)
     my_rank = db.get_user_rank(user_id) if user_id else None
     return jsonify({"leaderboard": board, "my_rank": my_rank})
 
