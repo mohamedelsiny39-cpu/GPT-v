@@ -213,8 +213,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-btn {
-  width: 175px;
-  height: 175px;
+  width: 195px;
+  height: 195px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -250,10 +250,10 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-img {
-  width: 110%;
-  height: 110%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 8px 8px rgba(0,0,0,0.35));
+  filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
   pointer-events: none;
   user-select: none;
   -webkit-user-drag: none;
@@ -271,6 +271,29 @@ html[lang="en"] body { font-family: var(--font-en); }
 @keyframes floatUp {
   0% { opacity: 1; transform: translateY(0) scale(1); }
   100% { opacity: 0; transform: translateY(-55px) scale(1.15); }
+}
+
+/* شرر ذهبي بيتطاير من حواف العملة كل ضغطة */
+.spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff 0%, var(--gold-2) 45%, var(--gold) 100%);
+  box-shadow: 0 0 8px rgba(245, 185, 66, 0.9);
+  animation: sparkOut 0.65s ease-out forwards;
+}
+@keyframes sparkOut {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(var(--sx), var(--sy)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) translate(var(--ex), var(--ey)) scale(0.3);
+  }
 }
 
 /* ===== أزرار الإعلانات ===== */
@@ -818,7 +841,7 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .coin-glow-ring, .particle, .dots span, .sky-building.building,
+  .coin-glow-ring, .particle, .spark, .dots span, .sky-building.building,
   .sky-building.built, .sky-building.building::before, .sky-building.building::after {
     animation: none !important;
   }
