@@ -279,6 +279,55 @@ def admin_set_coins(user_id):
     return redirect(url_for("admin_dashboard"))
 
 
+@app.route("/admin/user/<int:user_id>")
+@admin_required
+def admin_user_detail(user_id):
+    user = db.get_user_by_id(user_id)
+    if user is None:
+        return redirect(url_for("admin_dashboard"))
+    user["level"] = db.compute_level(user["coins"])
+    claimed_tasks = db.get_user_claimed_tasks(user_id)
+    return render_template(
+        "admin_user_detail.html", user=user, claimed_tasks=claimed_tasks, now=time.time()
+    )
+
+
+@app.route("/admin/user/<int:user_id>/update", methods=["POST"])
+@admin_required
+def admin_user_update(user_id):
+    updates = {field: request.form.get(field) for field in db.ADMIN_EDITABLE_FIELDS}
+    db.admin_update_user(user_id, updates)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
+@app.route("/admin/user/<int:user_id>/reset_energy", methods=["POST"])
+@admin_required
+def admin_user_reset_energy(user_id):
+    db.admin_reset_energy(user_id)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
+@app.route("/admin/user/<int:user_id>/reset_ads", methods=["POST"])
+@admin_required
+def admin_user_reset_ads(user_id):
+    db.admin_reset_ad_limits(user_id)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
+@app.route("/admin/user/<int:user_id>/delete", methods=["POST"])
+@admin_required
+def admin_user_delete(user_id):
+    db.admin_delete_user(user_id)
+    return redirect(url_for("admin_dashboard"))
+
+
+@app.route("/admin/user/<int:user_id>/unclaim/<int:task_id>", methods=["POST"])
+@admin_required
+def admin_user_unclaim(user_id, task_id):
+    db.admin_unclaim_task(user_id, task_id)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
 @app.route("/admin/tasks")
 @admin_required
 def admin_tasks():
