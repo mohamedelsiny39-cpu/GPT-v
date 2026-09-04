@@ -67,8 +67,6 @@ const els = {
   perTap: document.getElementById("perTap"),
   coinBtn: document.getElementById("coinBtn"),
   particles: document.getElementById("particles"),
-  earnRate: document.getElementById("earnRate"),
-  earnBalance: document.getElementById("earnBalance"),
   miningCounter: document.getElementById("miningCounter"),
   miningTimer: document.getElementById("miningTimer"),
   miningBtn: document.getElementById("miningBtn"),
@@ -703,8 +701,6 @@ async function loadMining() {
 }
 
 function renderMining() {
-  els.earnRate.textContent = formatCurrency(mining.rate) + ` / ${t("day")}`;
-  els.earnBalance.textContent = formatCurrency(mining.walletBalance);
   els.miningCounter.textContent = formatCurrency(mining.accrued, 8);
 
   if (!mining.started) {
