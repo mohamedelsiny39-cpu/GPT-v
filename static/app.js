@@ -688,20 +688,51 @@ function formatCountdown(totalSeconds) {
   return `${d}${t("dayShort")} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
+function formatCountdown(totalSeconds) {
+  const d = Math.floor(totalSeconds / 86400);
+  const h = Math.floor((totalSeconds % 86400) / 3600);
+  const m = Math.floor((totalSeconds % 3600) / 60);
+  const s = Math.floor(totalSeconds % 60);
+  return `${d}${t("dayShort")} ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+let currentRateUnit = "sec";
+const RATE_UNIT_SECONDS = { sec: 1, min: 60, hour: 3600, day: 86400 };
+const RATE_UNIT_DECIMALS = { sec: 8, min: 6, hour: 4, day: 2 };
+
+function safeNum(n, fallback = 0) {
+  return typeof n === "number" && !isNaN(n) ? n : fallback;
+}
+
 async function loadMining() {
-  const res = await fetch(`/api/mining?user_id=${user.id}`);
-  const data = await res.json();
+  try {
+    const res = await fetch(`/api/mining?user_id=${user.id}`);
+    const data = await res.json();
+    applyMiningData(data);
+  } catch (e) { /* هيتزامن تاني في المحاولة الجاية */ }
+}
+
+function applyMiningData(data) {
   mining = {
-    started: data.started, ready: data.ready_to_collect, secondsLeft: data.seconds_left,
-    accrued: data.accrued_usd, rate: data.rate_usd_per_day, upgrade1Purchased: data.upgrade1_purchased,
-    upgrade1Cost: data.upgrade1_cost, upgrade1Rate: data.upgrade1_rate_usd,
-    walletBalance: data.wallet_balance_usd, egpPerUsd: data.egp_per_usd,
+    started: !!data.started, ready: !!data.ready_to_collect,
+    secondsLeft: safeNum(data.seconds_left), accrued: safeNum(data.accrued_usd),
+    rate: safeNum(data.rate_usd_per_day, 0.01), upgrade1Purchased: !!data.upgrade1_purchased,
+    upgrade1Cost: safeNum(data.upgrade1_cost, 5000), upgrade1Rate: safeNum(data.upgrade1_rate_usd, 0.02),
+    walletBalance: safeNum(data.wallet_balance_usd), egpPerUsd: safeNum(data.egp_per_usd, 50),
+    lifetimeMined: safeNum(data.lifetime_mined_usd), harvestCount: safeNum(data.harvest_count),
   };
   renderMining();
 }
 
 function renderMining() {
   els.miningCounter.textContent = formatCurrency(mining.accrued, 8);
+
+  const perUnit = (mining.rate / 86400) * RATE_UNIT_SECONDS[currentRateUnit];
+  const rateLine = document.getElementById("miningRateLine");
+  if (rateLine) rateLine.textContent = `${formatCurrency(perUnit, RATE_UNIT_DECIMALS[currentRateUnit])} /${currentRateUnit}`;
+
+  const lifetimeEl = document.getElementById("lifetimeMined");
+  if (lifetimeEl) lifetimeEl.textContent = formatCurrency(mining.lifetimeMined);
 
   if (!mining.started) {
     els.miningTimer.textContent = "--:--:--";
@@ -717,6 +748,21 @@ function renderMining() {
     els.miningBtn.disabled = true;
   }
 
+  // حلقة التقدم حوالين البيت الرئيسي
+  const ring = document.getElementById("villageRing");
+  if (ring) {
+    let pct = 0;
+    if (mining.ready) pct = 100;
+    else if (mining.started) pct = Math.max(0, Math.min(100, ((86400 - mining.secondsLeft) / 86400) * 100));
+    ring.style.setProperty("--progress", pct.toFixed(2));
+  }
+
+  // البيوت الصغيرة بتنور حسب التطويرات
+  const n1 = document.getElementById("villageNode1");
+  const n2 = document.getElementById("villageNode2");
+  if (n1) n1.classList.toggle("lit", mining.harvestCount > 0);
+  if (n2) n2.classList.toggle("lit", mining.upgrade1Purchased);
+
   els.upgrade1Detail.textContent = formatCurrency(mining.upgrade1Rate) + ` / ${t("day")}`;
   if (mining.upgrade1Purchased) {
     els.upgrade1Btn.textContent = t("purchased");
@@ -728,6 +774,15 @@ function renderMining() {
     els.upgrade1Btn.classList.remove("purchased");
   }
 }
+
+document.querySelectorAll(".rate-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".rate-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    currentRateUnit = btn.dataset.unit;
+    renderMining();
+  });
+});
 
 els.miningBtn.addEventListener("click", async () => {
   els.miningBtn.disabled = true;
@@ -741,15 +796,10 @@ els.miningBtn.addEventListener("click", async () => {
     if (res.ok) {
       if (data.action === "collected") {
         showToast(`+${formatCurrency(data.collected_usd, 4)} 💰`);
+        spawnHarvestSparks();
         if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
       }
-      mining = {
-        started: data.started, ready: data.ready_to_collect, secondsLeft: data.seconds_left,
-        accrued: data.accrued_usd, rate: data.rate_usd_per_day, upgrade1Purchased: data.upgrade1_purchased,
-        upgrade1Cost: data.upgrade1_cost, upgrade1Rate: data.upgrade1_rate_usd,
-        walletBalance: data.wallet_balance_usd, egpPerUsd: data.egp_per_usd,
-      };
-      renderMining();
+      applyMiningData(data);
     } else {
       els.miningBtn.disabled = false;
     }
@@ -757,6 +807,26 @@ els.miningBtn.addEventListener("click", async () => {
     els.miningBtn.disabled = false;
   }
 });
+
+// شرر احتفالي حوالين البيت لحظة تجميع الأرباح
+function spawnHarvestSparks() {
+  const ring = document.getElementById("villageRing");
+  if (!ring) return;
+  for (let i = 0; i < 10; i++) {
+    const angle = (Math.PI * 2 * i) / 10 + Math.random() * 0.3;
+    const s = document.createElement("span");
+    s.className = "spark";
+    s.style.position = "absolute";
+    s.style.left = "50%";
+    s.style.top = "50%";
+    s.style.setProperty("--sx", `${Math.cos(angle) * 20}px`);
+    s.style.setProperty("--sy", `${Math.sin(angle) * 20}px`);
+    s.style.setProperty("--ex", `${Math.cos(angle) * 90}px`);
+    s.style.setProperty("--ey", `${Math.sin(angle) * 90}px`);
+    ring.appendChild(s);
+    setTimeout(() => s.remove(), 700);
+  }
+}
 
 els.upgrade1Btn.addEventListener("click", async () => {
   if (mining.upgrade1Purchased) return;
@@ -771,9 +841,7 @@ els.upgrade1Btn.addEventListener("click", async () => {
     if (res.ok) {
       S.coins = data.coins;
       renderCore();
-      mining.upgrade1Purchased = data.upgrade1_purchased;
-      mining.rate = data.rate_usd_per_day;
-      renderMining();
+      applyMiningData(data);
       showToast(`⚡ ${t("upgradePurchased")}`);
       if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
     } else {
@@ -785,17 +853,24 @@ els.upgrade1Btn.addEventListener("click", async () => {
   }
 });
 
-// عداد التعدين الحي (بيتحدث كل ثانية محلياً، وبيتزامن مع السيرفر عند فتح التاب)
+// عداد التعدين الحي محلياً كل ثانية
 setInterval(() => {
   const screen = document.getElementById("screen-earnings");
   if (!screen || screen.classList.contains("hidden")) return;
   if (mining.started && !mining.ready) {
     mining.secondsLeft = Math.max(0, mining.secondsLeft - 1);
     mining.accrued += mining.rate / 86400;
+    mining.lifetimeMined = safeNum(mining.lifetimeMined) + mining.rate / 86400;
     if (mining.secondsLeft <= 0) mining.ready = true;
     renderMining();
   }
 }, 1000);
+
+// مزامنة دورية مع السيرفر كل 20 ثانية لضمان الاستقرار ومنع أي انحراف في الأرقام
+setInterval(() => {
+  const screen = document.getElementById("screen-earnings");
+  if (screen && !screen.classList.contains("hidden")) loadMining();
+}, 20000);
 
 // ===== المحفظة الحقيقية =====
 function renderWalletBalance() {
