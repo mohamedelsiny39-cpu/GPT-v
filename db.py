@@ -98,7 +98,9 @@ def init_db():
                 last_checkin_date TEXT NOT NULL DEFAULT '',
                 wallet_balance_usd REAL NOT NULL DEFAULT 0,
                 mining_start_ts REAL NOT NULL DEFAULT 0,
-                mining_rate_level INTEGER NOT NULL DEFAULT 0
+                mining_rate_level INTEGER NOT NULL DEFAULT 0,
+                lifetime_mined_usd REAL NOT NULL DEFAULT 0,
+                harvest_count INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -118,6 +120,8 @@ def init_db():
             "wallet_balance_usd": "REAL NOT NULL DEFAULT 0",
             "mining_start_ts": "REAL NOT NULL DEFAULT 0",
             "mining_rate_level": "INTEGER NOT NULL DEFAULT 0",
+            "lifetime_mined_usd": "REAL NOT NULL DEFAULT 0",
+            "harvest_count": "INTEGER NOT NULL DEFAULT 0",
         }
         for col, coltype in migrations.items():
             if col not in existing_cols:
@@ -895,6 +899,8 @@ def get_mining_status(user_id: int):
             "rate_usd_per_day": rate,
             "upgrade1_purchased": row["mining_rate_level"] >= 1,
             "wallet_balance_usd": row["wallet_balance_usd"],
+            "lifetime_mined_usd": row["lifetime_mined_usd"],
+            "harvest_count": row["harvest_count"],
         }
 
 
@@ -916,12 +922,18 @@ def start_or_collect_mining(user_id: int):
 
         rate = mining_rate_usd(row["mining_rate_level"])
         new_balance = row["wallet_balance_usd"] + rate
+        new_lifetime = row["lifetime_mined_usd"] + rate
+        new_harvest_count = row["harvest_count"] + 1
         conn.execute(
-            "UPDATE users SET wallet_balance_usd=?, mining_start_ts=? WHERE user_id=?",
-            (new_balance, now, user_id),
+            "UPDATE users SET wallet_balance_usd=?, mining_start_ts=?, lifetime_mined_usd=?, "
+            "harvest_count=? WHERE user_id=?",
+            (new_balance, now, new_lifetime, new_harvest_count, user_id),
         )
         conn.commit()
-        return {"action": "collected", "collected_usd": rate, "wallet_balance_usd": new_balance}
+        return {
+            "action": "collected", "collected_usd": rate, "wallet_balance_usd": new_balance,
+            "lifetime_mined_usd": new_lifetime, "harvest_count": new_harvest_count,
+        }
 
 
 def purchase_mining_upgrade1(user_id: int):
