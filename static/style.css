@@ -405,76 +405,111 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 .city-header h2 { font-family: var(--font-display); font-size: 21px; margin: 4px 0 4px; }
 .city-header p { color: var(--text-muted); font-size: 12px; margin: 0; }
 
-/* ===== أرض المنجم (تاب الأرباح) ===== */
-.mine-yard {
+/* ===== قرية التعدين (تاب الأرباح) ===== */
+.village-hub {
   position: relative;
-  height: 150px;
-  border-radius: 16px;
-  overflow: hidden;
-  margin-bottom: 16px;
-  background:
-    radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.16), transparent 65%),
-    linear-gradient(180deg, #14172a 0%, #0e1020 100%);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-}
-.mine-yard-big {
-  height: 260px;
+  height: 230px;
   border-radius: 22px;
+  overflow: hidden;
+  margin-bottom: 14px;
+  background:
+    radial-gradient(ellipse at 50% 70%, rgba(139,92,246,0.18), transparent 60%),
+    linear-gradient(180deg, #14172a 0%, #0e1020 100%);
   border: 1px solid rgba(245, 185, 66, 0.25);
   box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.1);
 }
-.mine-ground {
+.village-ground {
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  height: 34px;
+  height: 30px;
   background:
     repeating-linear-gradient(90deg, rgba(245,185,66,0.06) 0 2px, transparent 2px 22px),
     linear-gradient(180deg, rgba(139,92,246,0.12), rgba(20,23,42,0.4));
   border-top: 1px solid rgba(245, 185, 66, 0.18);
 }
 
-/* مباني شبح بتدخل وتخرج من "تحت الإنشاء" باستمرار، كل واحدة بتوقيت مختلف */
-.mine-ghost {
-  position: absolute;
-  font-size: 30px;
-  animation: ghostBuildCycle 10s ease-in-out infinite;
-}
-.g1 { animation-delay: 0s; }
-.g2 { animation-delay: 2s; }
-.g3 { animation-delay: 4s; }
-.g4 { animation-delay: 6s; }
-.g5 { animation-delay: 8s; }
-@keyframes ghostBuildCycle {
-  0%   { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
-  35%  { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
-  55%  { opacity: 0.6;  filter: grayscale(0.3) brightness(1.1); transform: scale(1) translateY(0); }
-  75%  { opacity: 1;    filter: grayscale(0) brightness(1.25); transform: scale(1.08) translateY(-2px); }
-  100% { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
-}
-
-.mine-building {
+/* البيت الرئيسي في النص، بحلقة تقدم الدورة حواليه */
+.village-center {
   position: absolute;
   left: 50%;
-  bottom: 34px;
-  transform: translateX(-50%);
-  font-size: 36px;
-  filter: drop-shadow(0 0 10px rgba(245, 185, 66, 0.5));
-  animation: mineBuildingBob 3s ease-in-out infinite;
-  z-index: 2;
+  top: 44%;
+  transform: translate(-50%, -50%);
+  z-index: 3;
 }
-@keyframes mineBuildingBob {
-  0%, 100% { transform: translateX(-50%) translateY(0); }
-  50% { transform: translateX(-50%) translateY(-4px); }
+.village-ring {
+  width: 108px;
+  height: 108px;
+  border-radius: 50%;
+  padding: 6px;
+  background: conic-gradient(var(--teal) calc(var(--progress, 0) * 1%), rgba(255,255,255,0.08) 0);
+  transition: background 0.6s linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(52, 217, 196, 0.25);
+}
+.village-ring-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #1c2038, #0e1020);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: inset 0 0 14px rgba(0,0,0,0.5);
+}
+.village-house {
+  font-size: 44px;
+  filter: drop-shadow(0 0 12px rgba(245, 185, 66, 0.55));
+  animation: villageHouseBob 3s ease-in-out infinite;
+}
+@keyframes villageHouseBob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
 }
 
-/* رافعة بترحل يمين وشمال فوق أرض المنجم، كإنها بتتنقل بين المباني */
+/* بيوت صغيرة حوالين البيت الرئيسي، بتنور مع كل تطوير */
+.village-node {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-2);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  font-size: 19px;
+  opacity: 0.4;
+  filter: grayscale(1);
+  z-index: 2;
+  transition: opacity 0.5s ease, filter 0.5s ease, box-shadow 0.5s ease;
+}
+.village-node.lit {
+  opacity: 1;
+  filter: grayscale(0);
+  border-color: rgba(245, 185, 66, 0.6);
+  box-shadow: 0 0 14px rgba(245, 185, 66, 0.45);
+  animation: nodeLitPulse 2.4s ease-in-out infinite;
+}
+@keyframes nodeLitPulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(245, 185, 66, 0.35); }
+  50% { box-shadow: 0 0 20px rgba(245, 185, 66, 0.65); }
+}
+.village-node.soon { opacity: 0.25; }
+.n1 { left: 16%; top: 30%; }
+.n2 { right: 14%; top: 34%; }
+.n3 { left: 50%; bottom: 16%; transform: translateX(-50%); }
+
+/* رافعة بترحل يمين وشمال فوق القرية */
 .mine-crane {
   position: absolute;
-  bottom: 40%;
+  bottom: 46%;
   font-size: 22px;
   opacity: 0.85;
   animation: craneRoam 14s ease-in-out infinite;
   filter: drop-shadow(0 0 6px rgba(245, 185, 66, 0.4));
+  z-index: 2;
 }
 @keyframes craneRoam {
   0%   { left: 4%;  transform: rotate(-6deg); }
@@ -486,13 +521,13 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 
 .mine-walker {
   position: absolute;
-  bottom: 32px;
+  bottom: 28px;
   font-size: 15px;
   opacity: 0.85;
+  z-index: 2;
 }
 .w1 { animation: walkRight 9s linear infinite; }
 .w2 { animation: walkLeft 12s linear infinite; animation-delay: 1.5s; }
-.w3 { animation: walkRight 15s linear infinite; animation-delay: 4s; }
 @keyframes walkRight {
   0% { left: -8%; transform: scaleX(1); }
   49% { transform: scaleX(1); }
@@ -508,6 +543,44 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
   100% { left: 92%; transform: scaleX(-1); }
 }
 
+/* شريط إجمالي التعدين مدى الحياة */
+.lifetime-strip {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  border: 1px solid rgba(139, 92, 246, 0.15);
+}
+.lifetime-strip b { color: var(--gold); font-family: var(--font-mono); font-size: 13px; }
+
+/* اختيار وحدة الوقت */
+.rate-toggle {
+  display: flex;
+  gap: 6px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+.rate-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px;
+  border-radius: 9px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.rate-btn.active { background: var(--gold); color: #3a2600; }
+
 /* ===== عداد التعدين ===== */
 .mining-card {
   text-align: center;
@@ -517,19 +590,50 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
   padding: 18px;
   margin-bottom: 18px;
 }
+.mining-icon-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+.mining-chip-icon { font-size: 18px; }
 .mining-counter {
   font-family: var(--font-mono);
   font-weight: 700;
   font-size: 20px;
   color: var(--teal);
   text-shadow: 0 0 12px rgba(52, 217, 196, 0.4);
-  margin-bottom: 4px;
 }
+.live-dot {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--teal);
+  animation: liveBlink 1.4s ease-in-out infinite;
+}
+@keyframes liveBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+.mining-rate-line {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+
+.mining-timer-card {
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+  padding: 10px;
+  margin-bottom: 14px;
+  font-size: 10.5px;
+  color: var(--text-muted);
+}
+.timer-icon { margin-left: 4px; }
 .mining-timer {
   font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text-muted);
-  margin-bottom: 12px;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--gold);
+  margin-top: 4px;
 }
 .mining-btn {
   background: linear-gradient(90deg, var(--teal), var(--purple));
@@ -541,6 +645,7 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
+  width: 100%;
 }
 .mining-btn:disabled { opacity: 0.55; background: var(--surface-2); color: var(--text-muted); }
 .mining-btn:active:not(:disabled) { transform: scale(0.97); }
