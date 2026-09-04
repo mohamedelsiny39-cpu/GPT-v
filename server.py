@@ -232,17 +232,21 @@ def api_airdrop():
 
 # ---------- التعدين والمحفظة ----------
 
+def mining_status_payload(user_id):
+    status = db.get_mining_status(user_id)
+    status["egp_per_usd"] = db.EGP_PER_USD
+    status["upgrade1_cost"] = db.MINING_UPGRADE1_COST_CCL
+    status["upgrade1_rate_usd"] = db.MINING_UPGRADE1_RATE_USD
+    return status
+
+
 @app.route("/api/mining")
 def api_mining():
     user_id = request.args.get("user_id", type=int)
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
     db.get_or_create_user(user_id)
-    status = db.get_mining_status(user_id)
-    status["egp_per_usd"] = db.EGP_PER_USD
-    status["upgrade1_cost"] = db.MINING_UPGRADE1_COST_CCL
-    status["upgrade1_rate_usd"] = db.MINING_UPGRADE1_RATE_USD
-    return jsonify(status)
+    return jsonify(mining_status_payload(user_id))
 
 
 @app.route("/api/mining/collect", methods=["POST"])
@@ -255,8 +259,7 @@ def api_mining_collect():
     result = db.start_or_collect_mining(user_id)
     if "error" in result:
         return jsonify(result), 400
-    status = db.get_mining_status(user_id)
-    status["egp_per_usd"] = db.EGP_PER_USD
+    status = mining_status_payload(user_id)
     status["action"] = result["action"]
     if result["action"] == "collected":
         status["collected_usd"] = result["collected_usd"]
@@ -275,8 +278,7 @@ def api_mining_upgrade1():
         return jsonify(result), 400
     row = db.get_or_create_user(user_id)
     state = build_state(row)
-    status = db.get_mining_status(user_id)
-    status["egp_per_usd"] = db.EGP_PER_USD
+    status = mining_status_payload(user_id)
     status["coins"] = state["coins"]
     return jsonify(status)
 
