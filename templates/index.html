@@ -123,25 +123,61 @@
       <p data-i18n="earningsSub">دخّن CCL، وابدأ تجمع دولارات وجنيهات فعلية</p>
     </div>
 
-    <!-- أرض المنجم -->
-    <div class="mine-yard mine-yard-big">
-      <div class="mine-ghost g1" style="right:8%; bottom:12%;">🏢</div>
-      <div class="mine-ghost g2" style="right:28%; bottom:8%;">🏬</div>
-      <div class="mine-ghost g3" style="left:26%; bottom:16%;">🏠</div>
-      <div class="mine-ghost g4" style="left:8%; bottom:10%;">🏛️</div>
-      <div class="mine-ghost g5" style="right:46%; bottom:6%;">🏭</div>
-      <div class="mine-building">⛺</div>
+    <!-- قرية التعدين -->
+    <div class="village-hub">
       <span class="mine-crane">🏗️</span>
       <span class="mine-walker w1">🚶</span>
       <span class="mine-walker w2">🚶‍♂️</span>
-      <span class="mine-walker w3">🚶‍♀️</span>
-      <div class="mine-ground"></div>
+
+      <div class="village-node n1" id="villageNode1">
+        <span class="village-node-icon">🏠</span>
+      </div>
+      <div class="village-node n2" id="villageNode2">
+        <span class="village-node-icon">🏠</span>
+      </div>
+      <div class="village-node n3 soon" id="villageNode3">
+        <span class="village-node-icon">🔒</span>
+      </div>
+
+      <div class="village-center">
+        <div class="village-ring" id="villageRing">
+          <div class="village-ring-inner">
+            <span class="village-house">🏡</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="village-ground"></div>
+    </div>
+
+    <div class="lifetime-strip">
+      <span data-i18n="lifetimeMined">إجمالي التعدين منذ البداية</span>
+      <b id="lifetimeMined">$0.00</b>
+    </div>
+
+    <!-- اختيار وحدة الوقت -->
+    <div class="rate-toggle" id="rateToggle">
+      <button class="rate-btn active" data-unit="sec">/sec</button>
+      <button class="rate-btn" data-unit="min">/min</button>
+      <button class="rate-btn" data-unit="hour">/hour</button>
+      <button class="rate-btn" data-unit="day">/day</button>
     </div>
 
     <!-- عداد التعدين -->
     <div class="mining-card">
-      <div class="mining-counter" id="miningCounter">$0.00000000</div>
-      <div class="mining-timer" id="miningTimer">--:--:--</div>
+      <div class="mining-icon-row">
+        <span class="mining-chip-icon">💎</span>
+        <div class="mining-counter" id="miningCounter">$0.00000000</div>
+        <span class="live-dot" id="liveDot">● <span data-i18n="live">LIVE</span></span>
+      </div>
+      <div class="mining-rate-line" id="miningRateLine">$0.00000000 /sec</div>
+
+      <div class="mining-timer-card">
+        <span class="timer-icon">⏳</span>
+        <span data-i18n="cycleEndsIn">دورة التعدين بتخلص خلال</span>
+        <div class="mining-timer" id="miningTimer">--:--:--</div>
+      </div>
+
       <button id="miningBtn" class="mining-btn" data-i18n="startFreeMining">ابدأ التعدين المجاني</button>
     </div>
 
