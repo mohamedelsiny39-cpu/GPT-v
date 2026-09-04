@@ -406,8 +406,6 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 .city-header p { color: var(--text-muted); font-size: 12px; margin: 0; }
 
 /* ===== أرض المنجم (تاب الأرباح) ===== */
-.earn-stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
-
 .mine-yard {
   position: relative;
   height: 150px;
@@ -419,6 +417,12 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
     linear-gradient(180deg, #14172a 0%, #0e1020 100%);
   border: 1px solid rgba(139, 92, 246, 0.2);
 }
+.mine-yard-big {
+  height: 260px;
+  border-radius: 22px;
+  border: 1px solid rgba(245, 185, 66, 0.25);
+  box-shadow: inset 0 0 40px rgba(139, 92, 246, 0.1);
+}
 .mine-ground {
   position: absolute;
   left: 0; right: 0; bottom: 0;
@@ -428,25 +432,58 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
     linear-gradient(180deg, rgba(139,92,246,0.12), rgba(20,23,42,0.4));
   border-top: 1px solid rgba(245, 185, 66, 0.18);
 }
+
+/* مباني شبح بتدخل وتخرج من "تحت الإنشاء" باستمرار، كل واحدة بتوقيت مختلف */
 .mine-ghost {
   position: absolute;
-  font-size: 26px;
-  opacity: 0.16;
-  filter: grayscale(1);
+  font-size: 30px;
+  animation: ghostBuildCycle 10s ease-in-out infinite;
 }
+.g1 { animation-delay: 0s; }
+.g2 { animation-delay: 2s; }
+.g3 { animation-delay: 4s; }
+.g4 { animation-delay: 6s; }
+.g5 { animation-delay: 8s; }
+@keyframes ghostBuildCycle {
+  0%   { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
+  35%  { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
+  55%  { opacity: 0.6;  filter: grayscale(0.3) brightness(1.1); transform: scale(1) translateY(0); }
+  75%  { opacity: 1;    filter: grayscale(0) brightness(1.25); transform: scale(1.08) translateY(-2px); }
+  100% { opacity: 0.14; filter: grayscale(1) brightness(0.8); transform: scale(0.82) translateY(4px); }
+}
+
 .mine-building {
   position: absolute;
   left: 50%;
   bottom: 34px;
   transform: translateX(-50%);
-  font-size: 34px;
+  font-size: 36px;
   filter: drop-shadow(0 0 10px rgba(245, 185, 66, 0.5));
   animation: mineBuildingBob 3s ease-in-out infinite;
+  z-index: 2;
 }
 @keyframes mineBuildingBob {
   0%, 100% { transform: translateX(-50%) translateY(0); }
   50% { transform: translateX(-50%) translateY(-4px); }
 }
+
+/* رافعة بترحل يمين وشمال فوق أرض المنجم، كإنها بتتنقل بين المباني */
+.mine-crane {
+  position: absolute;
+  bottom: 40%;
+  font-size: 22px;
+  opacity: 0.85;
+  animation: craneRoam 14s ease-in-out infinite;
+  filter: drop-shadow(0 0 6px rgba(245, 185, 66, 0.4));
+}
+@keyframes craneRoam {
+  0%   { left: 4%;  transform: rotate(-6deg); }
+  25%  { left: 38%; transform: rotate(6deg); }
+  50%  { left: 70%; transform: rotate(-6deg); }
+  75%  { left: 40%; transform: rotate(6deg); }
+  100% { left: 4%;  transform: rotate(-6deg); }
+}
+
 .mine-walker {
   position: absolute;
   bottom: 32px;
