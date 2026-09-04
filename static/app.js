@@ -665,7 +665,7 @@ async function loadLeaderboard() {
 }
 
 // ===== التعدين المجاني والمحفظة الحقيقية =====
-let currentCurrency = localStorage.getItem("cc_currency") || (getLang() === "en" ? "usd" : "egp");
+let currentCurrency = getLang() === "en" ? "usd" : "egp"; // مربوطة باللغة دايماً: عربي=جنيه، إنجليزي=دولار
 let mining = {
   started: false, ready: false, secondsLeft: 0, accrued: 0,
   rate: 0.01, upgrade1Purchased: false, upgrade1Cost: 5000, upgrade1Rate: 0.02,
@@ -884,6 +884,10 @@ async function loadWallet() {
   if (mining.egpPerUsd === undefined || mining.walletBalance === undefined) {
     await loadMining();
   }
+  // نتأكد إن الزرار المضيء بيطابق العملة الفعلية المرتبطة باللغة
+  document.querySelectorAll(".currency-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.currency === currentCurrency);
+  });
   renderWalletBalance();
   loadWithdrawHistory();
 }
@@ -892,8 +896,7 @@ document.querySelectorAll(".currency-btn").forEach((btn) => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".currency-btn").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
-    currentCurrency = btn.dataset.currency;
-    localStorage.setItem("cc_currency", currentCurrency);
+    currentCurrency = btn.dataset.currency; // اختيار مؤقت لجلسة الاستخدام دي بس، مش بيتخزن
     renderWalletBalance();
     renderMining();
     updateWithdrawFormLabels();
