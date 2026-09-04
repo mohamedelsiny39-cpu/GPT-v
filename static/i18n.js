@@ -62,7 +62,6 @@ const I18N = {
     // الأرباح والتعدين
     earningsTitle: "أرباحك الحقيقية",
     earningsSub: "دخّن CCL، وابدأ تجمع دولارات وجنيهات فعلية",
-    ratePerDay: "لكل يوم",
     walletBalanceLabel: "رصيد المحفظة",
     startFreeMining: "ابدأ التعدين المجاني",
     miningRunning: "التعدين شغال...",
@@ -159,7 +158,6 @@ const I18N = {
     // Earnings & mining
     earningsTitle: "Your Real Earnings",
     earningsSub: "Mine CCL, and start collecting real dollars and pounds",
-    ratePerDay: "per day",
     walletBalanceLabel: "Wallet balance",
     startFreeMining: "Start Free Mining",
     miningRunning: "Mining running...",
