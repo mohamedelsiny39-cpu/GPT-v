@@ -112,6 +112,7 @@ def api_tap_batch():
     state["leveled_up"] = result["leveled_up"]
     state["building_completed"] = result["building_completed"]
     state["applied"] = result["applied"]
+    state["keys_won"] = result["keys_won"]
     return jsonify(state)
 
 
@@ -134,6 +135,7 @@ def api_watch_ad():
     row = db.get_or_create_user(user_id)
     state = build_state(row)
     state["ad_reward"] = result["reward"]
+    state["won_key"] = result["won_key"]
     return jsonify(state)
 
 
@@ -310,6 +312,80 @@ def api_withdrawals():
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
     return jsonify(db.get_user_withdrawals(user_id))
+
+
+# ---------- المزرعة والمفاتيح ----------
+
+@app.route("/api/farm")
+def api_farm():
+    user_id = request.args.get("user_id", type=int)
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    db.get_or_create_user(user_id)
+    state = db.get_farm_state(user_id)
+    state["rarity_config"] = db.RARITY_CONFIG
+    state["egp_per_usd"] = db.EGP_PER_USD
+    return jsonify(state)
+
+
+@app.route("/api/farm/open_chest", methods=["POST"])
+def api_farm_open_chest():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    result = db.open_chest(user_id)
+    if "error" in result:
+        return jsonify(result), 400
+    state = db.get_farm_state(user_id)
+    state["opened_rarity"] = result["rarity"]
+    return jsonify(state)
+
+
+@app.route("/api/farm/plant", methods=["POST"])
+def api_farm_plant():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    slot_index = data.get("slot_index")
+    rarity = data.get("rarity")
+    if not user_id or slot_index is None or not rarity:
+        return jsonify({"error": "missing_fields"}), 400
+    result = db.plant_seed(user_id, int(slot_index), rarity)
+    if "error" in result:
+        return jsonify(result), 400
+    return jsonify(db.get_farm_state(user_id))
+
+
+@app.route("/api/farm/harvest", methods=["POST"])
+def api_farm_harvest():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    slot_index = data.get("slot_index")
+    if not user_id or slot_index is None:
+        return jsonify({"error": "missing_fields"}), 400
+    result = db.harvest_plot(user_id, int(slot_index))
+    if "error" in result:
+        return jsonify(result), 400
+    state = db.get_farm_state(user_id)
+    state["harvested_rarity"] = result["rarity"]
+    state["harvested_value_usd"] = result["value_usd"]
+    return jsonify(state)
+
+
+@app.route("/api/farm/sell", methods=["POST"])
+def api_farm_sell():
+    data = request.get_json(silent=True) or {}
+    user_id = data.get("user_id")
+    crop_id = data.get("crop_id")
+    if not user_id:
+        return jsonify({"error": "user_id required"}), 400
+    result = db.sell_crops(user_id, crop_id)
+    if "error" in result:
+        return jsonify(result), 400
+    state = db.get_farm_state(user_id)
+    state["sold_usd"] = result["sold_usd"]
+    state["wallet_balance_usd"] = result["wallet_balance_usd"]
+    return jsonify(state)
 
 
 # ---------- الأدمن ----------
