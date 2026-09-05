@@ -212,9 +212,34 @@ html[lang="en"] body { font-family: var(--font-en); }
   min-height: 150px;
 }
 
+/* أيقونة الصدارة العائمة جنب العملة */
+.leaderboard-fab {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(245, 185, 66, 0.5);
+  background: linear-gradient(160deg, rgba(245,185,66,0.22), rgba(139,92,246,0.12));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(245, 185, 66, 0.25);
+  animation: fabFloat 3s ease-in-out infinite;
+  z-index: 3;
+}
+.leaderboard-fab:active { transform: scale(0.92); }
+.leaderboard-fab-icon { font-size: 20px; }
+@keyframes fabFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
 .coin-btn {
-  width: 160px;
-  height: 160px;
+  width: 195px;
+  height: 195px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -250,8 +275,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-img {
-  width: 110%;
-  height: 110%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
   pointer-events: none;
@@ -689,6 +714,246 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
   background: rgba(9, 10, 20, 0.35);
 }
 
+/* ===== المزرعة ===== */
+.chest-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: linear-gradient(160deg, rgba(245,185,66,0.14), rgba(139,92,246,0.1));
+  border: 1px solid rgba(245, 185, 66, 0.35);
+  border-radius: 16px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+.chest-keys {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--gold);
+}
+.chest-key-icon { font-size: 18px; }
+.chest-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--gold);
+  color: #3a2600;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.chest-btn:disabled { opacity: 0.45; }
+.chest-btn:active:not(:disabled) { transform: scale(0.95); }
+.chest-icon { font-size: 17px; animation: chestShake 2.2s ease-in-out infinite; }
+@keyframes chestShake {
+  0%, 100% { transform: rotate(0deg); }
+  92% { transform: rotate(0deg); }
+  94% { transform: rotate(-8deg); }
+  96% { transform: rotate(8deg); }
+  98% { transform: rotate(-4deg); }
+}
+
+/* الأرض الزراعية: شبكة 3x3 */
+.farm-land {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(139,92,246,0.14), transparent 65%), #12152a;
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 16px;
+  padding: 10px;
+  margin-bottom: 14px;
+}
+.farm-plot {
+  aspect-ratio: 1;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  position: relative;
+  cursor: pointer;
+  background: rgba(255,255,255,0.03);
+  border: 1.5px dashed rgba(255,255,255,0.12);
+}
+.farm-plot.empty:active { transform: scale(0.95); }
+.farm-plot-icon { font-size: 22px; }
+.farm-plot.growing {
+  border: 1.5px solid rgba(52, 217, 196, 0.35);
+  background: linear-gradient(180deg, rgba(52,217,196,0.12), transparent);
+}
+.farm-plot.growing .farm-plot-icon { animation: plotSway 2.4s ease-in-out infinite; }
+@keyframes plotSway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(4deg); }
+}
+.farm-plot-progress {
+  width: 80%;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.farm-plot-progress-fill { height: 100%; background: var(--teal); }
+.farm-plot.ready {
+  border: 1.5px solid rgba(245, 185, 66, 0.6);
+  background: linear-gradient(180deg, rgba(245,185,66,0.22), transparent);
+  animation: plotReadyGlow 1.4s ease-in-out infinite;
+}
+@keyframes plotReadyGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(245, 185, 66, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(245, 185, 66, 0.6); }
+}
+.farm-plot-timer { font-family: var(--font-mono); font-size: 8.5px; color: var(--text-muted); }
+.farm-plot-rarity-tag {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  font-size: 7px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 999px;
+  font-family: var(--font-mono);
+}
+
+/* ألوان الندرة (تستخدم في الأرض والبذور والمحصول) */
+.rarity-common { background: #4b5563; color: #e5e7eb; }
+.rarity-uncommon { background: #16a34a; color: #ecfdf5; }
+.rarity-rare { background: #2563eb; color: #eff6ff; }
+.rarity-epic { background: #9333ea; color: #f5e8ff; }
+.rarity-legendary { background: linear-gradient(90deg, #f59e0b, #ec4899); color: #2a0e05; }
+
+/* شبكة البذور المتاحة للزراعة */
+.seeds-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.seed-card {
+  background: var(--surface);
+  border-radius: 14px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.seed-card-icon { font-size: 26px; margin-bottom: 4px; }
+.seed-card-name { font-size: 12px; font-weight: 700; margin-bottom: 2px; }
+.seed-card-value { font-family: var(--font-mono); font-size: 10.5px; color: var(--gold); margin-bottom: 6px; }
+.seed-card-count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.seed-plant-btn {
+  width: 100%;
+  background: var(--teal);
+  color: #06342e;
+  border: none;
+  border-radius: 8px;
+  padding: 7px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 11px;
+  cursor: pointer;
+}
+.seed-plant-btn:disabled { opacity: 0.4; background: var(--surface-2); color: var(--text-muted); }
+
+/* قائمة المحصول المحصود */
+.crops-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.crops-header span {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--gold);
+}
+.sell-all-btn {
+  background: var(--gold);
+  color: #3a2600;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.sell-all-btn:disabled { opacity: 0.4; }
+.crops-list { display: flex; flex-direction: column; gap: 8px; }
+.crop-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  border-radius: 12px;
+  padding: 9px 12px;
+}
+.crop-row-icon { font-size: 20px; }
+.crop-row-name { flex: 1; font-size: 12px; font-weight: 600; }
+.crop-row-value { font-family: var(--font-mono); font-size: 11.5px; color: var(--gold); }
+.crop-sell-btn {
+  background: var(--surface-2);
+  color: var(--teal);
+  border: 1px solid rgba(52,217,196,0.3);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 10.5px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.crops-empty { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px; }
+
+/* رسالة فتح الصندوق */
+.chest-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 80;
+}
+.chest-reveal-modal {
+  text-align: center;
+  animation: chestRevealPop 0.5s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes chestRevealPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.chest-reveal-icon { font-size: 70px; margin-bottom: 14px; filter: drop-shadow(0 0 24px currentColor); }
+.chest-reveal-name {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 22px;
+  margin-bottom: 6px;
+}
+.chest-reveal-value { font-family: var(--font-mono); color: var(--gold); font-size: 14px; margin-bottom: 20px; }
+.chest-reveal-close {
+  background: var(--gold);
+  color: #3a2600;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 26px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 /* ===== Tasks / Achievements ===== */
 .sub-tabs {
   display: flex;
@@ -844,7 +1109,61 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 .ref-friend-reward { font-family: var(--font-mono); font-size: 11px; color: var(--gold); }
 .ref-empty { text-align: center; color: var(--text-muted); font-size: 12px; margin-top: 20px; }
 
-/* ===== Leaderboard ===== */
+/* ===== Leaderboard (شاشة Overlay كاملة) ===== */
+.leaderboard-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  animation: lbSlideIn 0.3s ease;
+}
+@keyframes lbSlideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.leaderboard-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+.leaderboard-overlay-header h2 {
+  font-family: var(--font-display);
+  font-size: 17px;
+  margin: 0;
+  flex: 1;
+  text-align: center;
+  margin-left: -70px;
+}
+.lb-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface);
+  border: 1px solid rgba(245, 185, 66, 0.3);
+  color: var(--gold);
+  border-radius: 10px;
+  padding: 7px 12px;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+}
+.leaderboard-overlay-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 20px 30px;
+}
+.leaderboard-overlay-sub {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0 0 14px;
+}
+
 .my-rank {
   text-align: center;
   font-family: var(--font-mono);
@@ -950,6 +1269,15 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 .board-row.top1 { border: 1px solid rgba(245, 185, 66, 0.5); }
 .board-row.top2 { border: 1px solid rgba(139, 147, 167, 0.4); }
 .board-row.top3 { border: 1px solid rgba(184, 121, 26, 0.5); }
+.board-row-me {
+  border: 1.5px solid rgba(52, 217, 196, 0.6) !important;
+  background: rgba(52, 217, 196, 0.08) !important;
+  animation: meRowGlow 2s ease-in-out infinite;
+}
+@keyframes meRowGlow {
+  0%, 100% { box-shadow: 0 0 8px rgba(52, 217, 196, 0.2); }
+  50% { box-shadow: 0 0 16px rgba(52, 217, 196, 0.45); }
+}
 .board-rank { font-family: var(--font-display); font-weight: 700; width: 26px; text-align: center; color: var(--text-muted); }
 .board-row.top1 .board-rank { color: var(--gold); }
 .board-avatar {
