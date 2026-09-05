@@ -46,6 +46,20 @@ AIRDROP_COIN_REQUIREMENT = 20000
 AIRDROP_REFERRAL_REQUIREMENT = 10
 AIRDROP_ENGAGEMENT_TAPS_REQUIREMENT = 3000  # مقياس "التفاعل" المقترح
 
+# ---------- المفاتيح والمزرعة ----------
+TAP_KEY_CHANCE = 0.01   # 1% من كل ضغطة
+AD_KEY_CHANCE = 0.20    # 20% من كل إعلان
+FARM_PLOT_COUNT = 9     # عدد قطع الأرض في المزرعة
+
+RARITY_CONFIG = {
+    "common":    {"usd": 0.01, "hours": 4,  "chest_prob": 97.5},
+    "uncommon":  {"usd": 0.03, "hours": 6,  "chest_prob": 1.70},
+    "rare":      {"usd": 0.08, "hours": 8,  "chest_prob": 0.55},
+    "epic":      {"usd": 0.15, "hours": 10, "chest_prob": 0.20},
+    "legendary": {"usd": 0.50, "hours": 12, "chest_prob": 0.05},
+}
+RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"]
+
 # 10 معالم، كل واحد بيغطي 10 مستويات = 100 مستوى بالظبط
 BUILDINGS = [
     {"name": "خيمة", "icon": "⛺"},
@@ -100,7 +114,13 @@ def init_db():
                 mining_start_ts REAL NOT NULL DEFAULT 0,
                 mining_rate_level INTEGER NOT NULL DEFAULT 0,
                 lifetime_mined_usd REAL NOT NULL DEFAULT 0,
-                harvest_count INTEGER NOT NULL DEFAULT 0
+                harvest_count INTEGER NOT NULL DEFAULT 0,
+                keys_count INTEGER NOT NULL DEFAULT 0,
+                seeds_common INTEGER NOT NULL DEFAULT 0,
+                seeds_uncommon INTEGER NOT NULL DEFAULT 0,
+                seeds_rare INTEGER NOT NULL DEFAULT 0,
+                seeds_epic INTEGER NOT NULL DEFAULT 0,
+                seeds_legendary INTEGER NOT NULL DEFAULT 0
             )
             """
         )
@@ -122,6 +142,12 @@ def init_db():
             "mining_rate_level": "INTEGER NOT NULL DEFAULT 0",
             "lifetime_mined_usd": "REAL NOT NULL DEFAULT 0",
             "harvest_count": "INTEGER NOT NULL DEFAULT 0",
+            "keys_count": "INTEGER NOT NULL DEFAULT 0",
+            "seeds_common": "INTEGER NOT NULL DEFAULT 0",
+            "seeds_uncommon": "INTEGER NOT NULL DEFAULT 0",
+            "seeds_rare": "INTEGER NOT NULL DEFAULT 0",
+            "seeds_epic": "INTEGER NOT NULL DEFAULT 0",
+            "seeds_legendary": "INTEGER NOT NULL DEFAULT 0",
         }
         for col, coltype in migrations.items():
             if col not in existing_cols:
@@ -137,6 +163,30 @@ def init_db():
                 amount_usd REAL NOT NULL,
                 status TEXT NOT NULL DEFAULT 'pending',
                 created_at REAL NOT NULL
+            )
+            """
+        )
+
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS farm_plots (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                slot_index INTEGER NOT NULL,
+                rarity TEXT NOT NULL,
+                planted_at REAL NOT NULL,
+                UNIQUE(user_id, slot_index)
+            )
+            """
+        )
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS harvested_crops (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                rarity TEXT NOT NULL,
+                value_usd REAL NOT NULL,
+                harvested_at REAL NOT NULL
             )
             """
         )
@@ -370,17 +420,20 @@ def tap_batch(user_id: int, count: int):
 
         level_before = compute_level(coins)
         applied = min(count, energy)
+        keys_won = 0
         for _ in range(applied):
             lvl = compute_level(coins)
             coins += coins_per_tap(lvl)
+            if roll_key_from_tap():
+                keys_won += 1
         energy -= applied
         total_taps += applied
         level_after = compute_level(coins)
 
         conn.execute(
             "UPDATE users SET coins=?, energy=?, last_full_refill=?, total_taps=?, "
-            "last_active=? WHERE user_id=?",
-            (coins, energy, last_refill, total_taps, now, user_id),
+            "last_active=?, keys_count=keys_count+? WHERE user_id=?",
+            (coins, energy, last_refill, total_taps, now, keys_won, user_id),
         )
         conn.commit()
 
@@ -388,6 +441,7 @@ def tap_batch(user_id: int, count: int):
             "applied": applied,
             "leveled_up": level_after > level_before,
             "building_completed": (level_before // 10) != (level_after // 10),
+            "keys_won": keys_won,
         }
 
 
@@ -422,14 +476,15 @@ def watch_ad(user_id: int, ad_type: str):
         coins = row["coins"] + reward
         ads_watched = row["ads_watched"] + 1
         remaining -= 1
+        won_key = roll_key_from_ad()
 
         conn.execute(
             f"UPDATE users SET coins=?, ads_watched=?, last_ad_time=?, last_active=?, "
-            f"{remaining_col}=?, {refill_col}=? WHERE user_id=?",
-            (coins, ads_watched, now, now, remaining, refill_ts, user_id),
+            f"{remaining_col}=?, {refill_col}=?, keys_count=keys_count+? WHERE user_id=?",
+            (coins, ads_watched, now, now, remaining, refill_ts, 1 if won_key else 0, user_id),
         )
         conn.commit()
-        return {"reward": reward, "ad_type": ad_type, "remaining": remaining}
+        return {"reward": reward, "ad_type": ad_type, "remaining": remaining, "won_key": won_key}
 
 
 def get_ad_status(user_id: int):
@@ -1000,3 +1055,168 @@ def admin_set_withdrawal_status(withdrawal_id: int, status: str):
     with _lock, _get_conn() as conn:
         conn.execute("UPDATE withdrawals SET status=? WHERE id=?", (status, withdrawal_id))
         conn.commit()
+
+
+# ---------- المفاتيح والصندوق ----------
+
+def roll_key_from_tap() -> bool:
+    return random.random() < TAP_KEY_CHANCE
+
+
+def roll_key_from_ad() -> bool:
+    return random.random() < AD_KEY_CHANCE
+
+
+def _roll_rarity() -> str:
+    roll = random.uniform(0, 100)
+    cumulative = 0
+    for rarity in RARITY_ORDER:
+        cumulative += RARITY_CONFIG[rarity]["chest_prob"]
+        if roll <= cumulative:
+            return rarity
+    return "common"
+
+
+def open_chest(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT keys_count FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+        if row["keys_count"] <= 0:
+            return {"error": "no_keys"}
+
+        rarity = _roll_rarity()
+        seed_col = f"seeds_{rarity}"
+        conn.execute(
+            f"UPDATE users SET keys_count=keys_count-1, {seed_col}={seed_col}+1 WHERE user_id=?",
+            (user_id,),
+        )
+        conn.commit()
+        return {"rarity": rarity}
+
+
+# ---------- المزرعة ----------
+
+def get_farm_state(user_id: int):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return None
+        now = time.time()
+
+        seeds = {r: row[f"seeds_{r}"] for r in RARITY_ORDER}
+
+        plot_rows = conn.execute(
+            "SELECT * FROM farm_plots WHERE user_id=? ORDER BY slot_index", (user_id,)
+        ).fetchall()
+        plots_by_slot = {p["slot_index"]: p for p in plot_rows}
+
+        plots = []
+        for i in range(FARM_PLOT_COUNT):
+            p = plots_by_slot.get(i)
+            if p is None:
+                plots.append({"slot_index": i, "status": "empty"})
+                continue
+            rarity = p["rarity"]
+            harvest_seconds = RARITY_CONFIG[rarity]["hours"] * 3600
+            elapsed = now - p["planted_at"]
+            ready = elapsed >= harvest_seconds
+            plots.append({
+                "slot_index": i,
+                "status": "ready" if ready else "growing",
+                "rarity": rarity,
+                "seconds_left": max(0, int(harvest_seconds - elapsed)),
+                "progress": min(1.0, elapsed / harvest_seconds),
+            })
+
+        crop_rows = conn.execute(
+            "SELECT * FROM harvested_crops WHERE user_id=? ORDER BY harvested_at DESC", (user_id,)
+        ).fetchall()
+        crops = [dict(c) for c in crop_rows]
+
+        return {
+            "keys_count": row["keys_count"],
+            "seeds": seeds,
+            "plots": plots,
+            "crops": crops,
+            "crops_total_usd": round(sum(c["value_usd"] for c in crops), 4),
+        }
+
+
+def plant_seed(user_id: int, slot_index: int, rarity: str):
+    if rarity not in RARITY_CONFIG:
+        return {"error": "invalid_rarity"}
+    if not (0 <= slot_index < FARM_PLOT_COUNT):
+        return {"error": "invalid_slot"}
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT * FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+        seed_col = f"seeds_{rarity}"
+        if row[seed_col] <= 0:
+            return {"error": "no_seeds"}
+        existing = conn.execute(
+            "SELECT 1 FROM farm_plots WHERE user_id=? AND slot_index=?", (user_id, slot_index)
+        ).fetchone()
+        if existing:
+            return {"error": "slot_occupied"}
+
+        conn.execute(f"UPDATE users SET {seed_col}={seed_col}-1 WHERE user_id=?", (user_id,))
+        conn.execute(
+            "INSERT INTO farm_plots (user_id, slot_index, rarity, planted_at) VALUES (?,?,?,?)",
+            (user_id, slot_index, rarity, time.time()),
+        )
+        conn.commit()
+        return {"ok": True}
+
+
+def harvest_plot(user_id: int, slot_index: int):
+    with _lock, _get_conn() as conn:
+        plot = conn.execute(
+            "SELECT * FROM farm_plots WHERE user_id=? AND slot_index=?", (user_id, slot_index)
+        ).fetchone()
+        if plot is None:
+            return {"error": "empty_slot"}
+        rarity = plot["rarity"]
+        harvest_seconds = RARITY_CONFIG[rarity]["hours"] * 3600
+        elapsed = time.time() - plot["planted_at"]
+        if elapsed < harvest_seconds:
+            return {"error": "not_ready", "seconds_left": int(harvest_seconds - elapsed)}
+
+        value_usd = RARITY_CONFIG[rarity]["usd"]
+        conn.execute("DELETE FROM farm_plots WHERE id=?", (plot["id"],))
+        conn.execute(
+            "INSERT INTO harvested_crops (user_id, rarity, value_usd, harvested_at) VALUES (?,?,?,?)",
+            (user_id, rarity, value_usd, time.time()),
+        )
+        conn.commit()
+        return {"ok": True, "rarity": rarity, "value_usd": value_usd}
+
+
+def sell_crops(user_id: int, crop_id=None):
+    with _lock, _get_conn() as conn:
+        row = conn.execute("SELECT wallet_balance_usd FROM users WHERE user_id=?", (user_id,)).fetchone()
+        if row is None:
+            return {"error": "user_not_found"}
+
+        if crop_id is not None:
+            crop = conn.execute(
+                "SELECT * FROM harvested_crops WHERE id=? AND user_id=?", (crop_id, user_id)
+            ).fetchone()
+            if crop is None:
+                return {"error": "crop_not_found"}
+            total = crop["value_usd"]
+            conn.execute("DELETE FROM harvested_crops WHERE id=?", (crop_id,))
+        else:
+            crops = conn.execute(
+                "SELECT * FROM harvested_crops WHERE user_id=?", (user_id,)
+            ).fetchall()
+            if not crops:
+                return {"error": "nothing_to_sell"}
+            total = sum(c["value_usd"] for c in crops)
+            conn.execute("DELETE FROM harvested_crops WHERE user_id=?", (user_id,))
+
+        new_balance = row["wallet_balance_usd"] + total
+        conn.execute("UPDATE users SET wallet_balance_usd=? WHERE user_id=?", (new_balance, user_id))
+        conn.commit()
+        return {"ok": True, "sold_usd": total, "wallet_balance_usd": new_balance}
