@@ -223,6 +223,10 @@ async function sendPendingTaps() {
     const state = await res.json();
     applyServerState(state);
     if (state.leveled_up && tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    if (state.keys_won > 0) {
+      showToast(`🔑 +${state.keys_won} ${t("keys")}!`);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    }
   } catch (e) {
     pendingTaps += count;
   } finally {
@@ -341,7 +345,7 @@ async function finishAdWatch(adType, btnEl) {
     const state = await res.json();
     if (res.ok) {
       applyServerState(state);
-      showToast(`+${state.ad_reward} CCL`);
+      showToast(state.won_key ? `+${state.ad_reward} CCL 🔑 +1 ${t("keys")}!` : `+${state.ad_reward} CCL`);
       if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
     } else if (state.error === "limit_reached") {
       showToast(`${t("dailyLimitReached")} ${Math.ceil(state.seconds_left / 60)}m`);
@@ -555,9 +559,9 @@ function attachTaskClaimHandlers(container, reloadFn) {
   });
 }
 
-document.querySelectorAll(".sub-tab-btn").forEach((btn) => {
+document.querySelectorAll(".sub-tab-btn:not(.farm-sub-tab-btn)").forEach((btn) => {
   btn.addEventListener("click", () => {
-    document.querySelectorAll(".sub-tab-btn").forEach((b) => b.classList.remove("active"));
+    document.querySelectorAll(".sub-tab-btn:not(.farm-sub-tab-btn)").forEach((b) => b.classList.remove("active"));
     btn.classList.add("active");
     document.getElementById("subscreen-tasks").classList.toggle("hidden", btn.dataset.subtab !== "tasks");
     document.getElementById("subscreen-achievements").classList.toggle("hidden", btn.dataset.subtab !== "achievements");
@@ -652,7 +656,7 @@ async function loadLeaderboard() {
   els.boardList.innerHTML = "";
   rest.forEach((p) => {
     const row = document.createElement("div");
-    row.className = "board-row";
+    row.className = "board-row" + (p.user_id === user.id ? " board-row-me" : "");
     const avatarContent = p.photo_url ? `<img src="${p.photo_url}">` : (p.first_name || "?").charAt(0);
     row.innerHTML = `
       <span class="board-rank">${p.rank}</span>
@@ -662,6 +666,13 @@ async function loadLeaderboard() {
     `;
     els.boardList.appendChild(row);
   });
+
+  if (data.my_rank && data.my_rank > 3) {
+    setTimeout(() => {
+      const meRow = document.querySelector(".board-row-me");
+      if (meRow) meRow.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 200);
+  }
 }
 
 // ===== التعدين المجاني والمحفظة الحقيقية =====
@@ -985,6 +996,263 @@ async function loadWithdrawHistory() {
   });
 }
 
+// ===== المزرعة =====
+const RARITY_META = {
+  common:    { icon: "🌱" },
+  uncommon:  { icon: "🌿" },
+  rare:      { icon: "🍀" },
+  epic:      { icon: "🌺" },
+  legendary: { icon: "🌟" },
+};
+
+let farmState = {
+  keys_count: 0, seeds: {}, plots: [], crops: [], crops_total_usd: 0,
+  rarity_config: {}, egp_per_usd: 50,
+};
+
+function openGenericModal(html) {
+  document.getElementById("genericModalContent").innerHTML = html;
+  document.getElementById("genericModalOverlay").classList.remove("hidden");
+}
+function closeGenericModal() {
+  document.getElementById("genericModalOverlay").classList.add("hidden");
+}
+
+function farmCurrency(usd, decimals = 2) {
+  if (currentCurrency === "egp") return `${(usd * farmState.egp_per_usd).toFixed(decimals)} ${t("egpShort")}`;
+  return `$${usd.toFixed(decimals)}`;
+}
+
+async function loadFarm() {
+  const res = await fetch(`/api/farm?user_id=${user.id}`);
+  const data = await res.json();
+  farmState = data;
+  renderFarm();
+}
+
+function renderFarm() {
+  document.getElementById("keysCount").textContent = farmState.keys_count;
+  document.getElementById("openChestBtn").disabled = farmState.keys_count <= 0;
+
+  // الأرض
+  const land = document.getElementById("farmLand");
+  land.innerHTML = "";
+  farmState.plots.forEach((p) => {
+    const div = document.createElement("div");
+    div.className = `farm-plot ${p.status}`;
+    if (p.status === "empty") {
+      div.innerHTML = `<span class="farm-plot-icon">➕</span>`;
+      div.addEventListener("click", () => handleEmptyPlotClick(p.slot_index));
+    } else {
+      const meta = RARITY_META[p.rarity] || { icon: "🌱" };
+      const rarityTag = `<span class="farm-plot-rarity-tag rarity-${p.rarity}">${t("rarity_" + p.rarity)}</span>`;
+      if (p.status === "growing") {
+        const h = Math.floor(p.seconds_left / 3600);
+        const m = Math.floor((p.seconds_left % 3600) / 60);
+        div.innerHTML = `
+          ${rarityTag}
+          <span class="farm-plot-icon">${meta.icon}</span>
+          <div class="farm-plot-progress"><div class="farm-plot-progress-fill" style="width:${Math.round(p.progress * 100)}%"></div></div>
+          <span class="farm-plot-timer">${h}${t("hourShort")} ${m}${t("minShort")}</span>
+        `;
+      } else {
+        div.innerHTML = `
+          ${rarityTag}
+          <span class="farm-plot-icon">${meta.icon}</span>
+          <span class="farm-plot-timer">✅ ${t("readyLabel")}</span>
+        `;
+        div.addEventListener("click", () => handleHarvestClick(p.slot_index));
+      }
+    }
+    land.appendChild(div);
+  });
+
+  // البذور
+  const grid = document.getElementById("seedsGrid");
+  grid.innerHTML = "";
+  Object.keys(farmState.seeds).forEach((rarity) => {
+    const count = farmState.seeds[rarity];
+    const cfg = farmState.rarity_config[rarity];
+    const meta = RARITY_META[rarity];
+    const card = document.createElement("div");
+    card.className = "seed-card";
+    const hasEmptySlot = farmState.plots.some((p) => p.status === "empty");
+    card.innerHTML = `
+      <div class="seed-card-icon">${meta.icon}</div>
+      <div class="seed-card-name">${t("rarity_" + rarity)}</div>
+      <div class="seed-card-value">${farmCurrency(cfg.usd)} · ${cfg.hours}${t("hourShort")}</div>
+      <div class="seed-card-count">${t("owned")}: ${count}</div>
+      <button class="seed-plant-btn" ${count <= 0 || !hasEmptySlot ? "disabled" : ""} data-rarity="${rarity}">${t("plant")}</button>
+    `;
+    grid.appendChild(card);
+  });
+  grid.querySelectorAll(".seed-plant-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const emptySlot = farmState.plots.find((p) => p.status === "empty");
+      if (!emptySlot) return;
+      plantSeedInSlot(emptySlot.slot_index, btn.dataset.rarity);
+    });
+  });
+
+  // المحصول
+  document.getElementById("cropsTotalValue").textContent = farmCurrency(farmState.crops_total_usd);
+  document.getElementById("sellAllBtn").disabled = farmState.crops.length === 0;
+  const cropsList = document.getElementById("cropsList");
+  cropsList.innerHTML = "";
+  if (farmState.crops.length === 0) {
+    cropsList.innerHTML = `<div class="crops-empty">${t("noCropsYet")}</div>`;
+  } else {
+    farmState.crops.forEach((c) => {
+      const meta = RARITY_META[c.rarity];
+      const row = document.createElement("div");
+      row.className = "crop-row";
+      row.innerHTML = `
+        <span class="crop-row-icon">${meta.icon}</span>
+        <span class="crop-row-name">${t("rarity_" + c.rarity)}</span>
+        <span class="crop-row-value">${farmCurrency(c.value_usd)}</span>
+        <button class="crop-sell-btn" data-id="${c.id}">${t("sell")}</button>
+      `;
+      cropsList.appendChild(row);
+    });
+    cropsList.querySelectorAll(".crop-sell-btn").forEach((btn) => {
+      btn.addEventListener("click", () => sellCrop(parseInt(btn.dataset.id, 10)));
+    });
+  }
+}
+
+function handleEmptyPlotClick(slotIndex) {
+  const owned = Object.keys(farmState.seeds).filter((r) => farmState.seeds[r] > 0);
+  if (owned.length === 0) {
+    showToast(t("noSeedsYet"));
+    return;
+  }
+  const buttons = owned.map((r) => {
+    const meta = RARITY_META[r];
+    return `<button class="seed-plant-btn" style="margin-bottom:8px;" data-rarity="${r}" data-slot="${slotIndex}">
+      ${meta.icon} ${t("rarity_" + r)} (${farmState.seeds[r]})
+    </button>`;
+  }).join("");
+  openGenericModal(`
+    <div class="chest-reveal-icon">🌱</div>
+    <div class="chest-reveal-name">${t("choosePlant")}</div>
+    <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:14px;">${buttons}</div>
+    <button class="chest-reveal-close" id="modalCloseBtn">${t("cancel")}</button>
+  `);
+  document.getElementById("modalCloseBtn").addEventListener("click", closeGenericModal);
+  document.querySelectorAll("#genericModalContent .seed-plant-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeGenericModal();
+      plantSeedInSlot(parseInt(btn.dataset.slot, 10), btn.dataset.rarity);
+    });
+  });
+}
+
+async function plantSeedInSlot(slotIndex, rarity) {
+  try {
+    const res = await fetch("/api/farm/plant", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, slot_index: slotIndex, rarity }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      farmState = data;
+      renderFarm();
+      showToast(`${RARITY_META[rarity].icon} ${t("planted")}`);
+    }
+  } catch (e) { /* تجاهل */ }
+}
+
+async function handleHarvestClick(slotIndex) {
+  try {
+    const res = await fetch("/api/farm/harvest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, slot_index: slotIndex }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      farmState = data;
+      renderFarm();
+      showToast(`🌾 +${farmCurrency(data.harvested_value_usd, 4)}`);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    }
+  } catch (e) { /* تجاهل */ }
+}
+
+async function sellCrop(cropId) {
+  try {
+    const res = await fetch("/api/farm/sell", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id, crop_id: cropId }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      farmState = data;
+      renderFarm();
+      showToast(`💰 +${farmCurrency(data.sold_usd)}`);
+    }
+  } catch (e) { /* تجاهل */ }
+}
+
+document.getElementById("sellAllBtn").addEventListener("click", async () => {
+  try {
+    const res = await fetch("/api/farm/sell", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      farmState = data;
+      renderFarm();
+      showToast(`💰 +${farmCurrency(data.sold_usd)}`);
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    }
+  } catch (e) { /* تجاهل */ }
+});
+
+document.getElementById("openChestBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("openChestBtn");
+  btn.disabled = true;
+  try {
+    const res = await fetch("/api/farm/open_chest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: user.id }),
+    });
+    const data = await res.json();
+    if (res.ok) {
+      farmState = data;
+      const rarity = data.opened_rarity;
+      const meta = RARITY_META[rarity];
+      const cfg = farmState.rarity_config[rarity];
+      openGenericModal(`
+        <div class="chest-reveal-icon rarity-${rarity}" style="background:none;">${meta.icon}</div>
+        <div class="chest-reveal-name">${t("rarity_" + rarity)}</div>
+        <div class="chest-reveal-value">${farmCurrency(cfg.usd)} · ${t("harvestIn")} ${cfg.hours}${t("hourShort")}</div>
+        <button class="chest-reveal-close" id="chestCloseBtn">${t("nice")}</button>
+      `);
+      document.getElementById("chestCloseBtn").addEventListener("click", closeGenericModal);
+      renderFarm();
+      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+    } else if (data.error === "no_keys") {
+      showToast(t("noKeysYet"));
+    }
+  } catch (e) { /* تجاهل */ }
+  btn.disabled = farmState.keys_count <= 0;
+});
+
+document.querySelectorAll(".farm-sub-tab-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".farm-sub-tab-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    document.getElementById("farmsub-seeds").classList.toggle("hidden", btn.dataset.farmsub !== "seeds");
+    document.getElementById("farmsub-crops").classList.toggle("hidden", btn.dataset.farmsub !== "crops");
+  });
+});
+
 // ===== الإيردروب =====
 async function loadAirdrop() {
   const res = await fetch(`/api/airdrop?user_id=${user.id}`);
@@ -1024,9 +1292,18 @@ document.querySelectorAll(".tab-btn").forEach((btn) => {
     if (btn.dataset.tab === "tasks") loadTasks();
     if (btn.dataset.tab === "earnings") loadMining();
     if (btn.dataset.tab === "referrals") loadReferrals();
-    if (btn.dataset.tab === "leaderboard") loadLeaderboard();
+    if (btn.dataset.tab === "farm") loadFarm();
     if (btn.dataset.tab === "wallet") { loadAirdrop(); loadWallet(); }
   });
+});
+
+// ===== شاشة الصدارة (Overlay) =====
+document.getElementById("leaderboardIconBtn").addEventListener("click", () => {
+  document.getElementById("leaderboardOverlay").classList.remove("hidden");
+  loadLeaderboard();
+});
+document.getElementById("leaderboardBackBtn").addEventListener("click", () => {
+  document.getElementById("leaderboardOverlay").classList.add("hidden");
 });
 
 // ===== عداد الطاقة كل ثانية =====
