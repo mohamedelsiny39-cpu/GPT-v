@@ -72,6 +72,9 @@
         <span class="coin-glow-ring"></span>
         <img src="{{ url_for('static', filename='images/coin.png') }}" alt="CanCel Coin" class="coin-img" />
       </button>
+      <button id="leaderboardIconBtn" class="leaderboard-fab" aria-label="leaderboard">
+        <span class="leaderboard-fab-icon">🏆</span>
+      </button>
       <div id="particles" class="particles"></div>
     </div>
 
@@ -248,15 +251,45 @@
     <div class="ref-friends-list" id="refFriendsList"></div>
   </section>
 
-  <!-- تاب الصدارة -->
-  <section class="screen hidden" id="screen-leaderboard">
+  <!-- تاب المزرعة -->
+  <section class="screen hidden" id="screen-farm">
     <div class="city-header">
-      <h2 data-i18n="leaderboardTitle">لوحة الصدارة</h2>
-      <p data-i18n="leaderboardSub">أكتر اللاعبين جمعوا CCL</p>
+      <h2 data-i18n="farmTitle">المزرعة</h2>
+      <p data-i18n="farmSub">ازرع، احصد، وبيع بفلوس حقيقية</p>
     </div>
-    <div class="my-rank" id="myRank"></div>
-    <div class="podium" id="podium"></div>
-    <div class="board-list" id="boardList"></div>
+
+    <!-- صندوق المفاتيح -->
+    <div class="chest-card">
+      <div class="chest-keys">
+        <span class="chest-key-icon">🔑</span>
+        <span id="keysCount">0</span>
+        <span data-i18n="keys">مفاتيح</span>
+      </div>
+      <button id="openChestBtn" class="chest-btn">
+        <span class="chest-icon">📦</span>
+        <span data-i18n="openChest">افتح الصندوق</span>
+      </button>
+    </div>
+
+    <!-- الأرض الزراعية -->
+    <div class="farm-land" id="farmLand"></div>
+
+    <!-- تابات فرعية: البذور المتاحة / المحصول -->
+    <div class="sub-tabs">
+      <button class="sub-tab-btn farm-sub-tab-btn active" data-farmsub="seeds" data-i18n="seedsSubTab">البذور</button>
+      <button class="sub-tab-btn farm-sub-tab-btn" data-farmsub="crops" data-i18n="cropsSubTab">المحصول</button>
+    </div>
+
+    <div id="farmsub-seeds">
+      <div class="seeds-grid" id="seedsGrid"></div>
+    </div>
+    <div id="farmsub-crops" class="hidden">
+      <div class="crops-header">
+        <span id="cropsTotalValue">$0.00</span>
+        <button id="sellAllBtn" class="sell-all-btn" data-i18n="sellAll">بيع الكل</button>
+      </div>
+      <div class="crops-list" id="cropsList"></div>
+    </div>
   </section>
 
   <!-- تاب المحفظة -->
@@ -269,7 +302,7 @@
           <div class="airdrop-date" id="airdropDate">25/9/2026</div>
         </div>
       </div>
-      <div class="airdrop-prize" id="airdropPrize">200$ / 10,000 <span data-i18n="egp">جنيه</span></div>
+      <div class="airdrop-prize" id="airdropPrize">20,000 <span data-i18n="egp">جنيه</span></div>
       <div class="airdrop-conditions" id="airdropConditions"></div>
     </div>
 
@@ -307,7 +340,7 @@
   <!-- شريط التنقل السفلي -->
   <nav class="tabbar">
     <button class="tab-btn active" data-tab="play">
-      <span class="tab-icon">🎮</span>
+      <span class="tab-icon">🪙</span>
       <span class="tab-label" data-i18n="tabPlay">اللعب</span>
     </button>
     <button class="tab-btn" data-tab="earnings">
@@ -322,12 +355,12 @@
       <span class="tab-icon">👥</span>
       <span class="tab-label" data-i18n="tabReferrals">الدعوات</span>
     </button>
-    <button class="tab-btn" data-tab="leaderboard">
-      <span class="tab-icon">🏆</span>
-      <span class="tab-label" data-i18n="tabLeaderboard">الصدارة</span>
+    <button class="tab-btn" data-tab="farm">
+      <span class="tab-icon">🌾</span>
+      <span class="tab-label" data-i18n="tabFarm">المزرعة</span>
     </button>
     <button class="tab-btn" data-tab="wallet">
-      <span class="tab-icon">🪎</span>
+      <span class="tab-icon">👛</span>
       <span class="tab-label" data-i18n="tabWallet">المحفظة</span>
     </button>
   </nav>
@@ -340,6 +373,27 @@
     <div class="ad-modal-icon">📺</div>
     <div class="ad-modal-title" data-i18n="adLoading">جاري تحميل الإعلان...</div>
     <div class="ad-progress"><div class="ad-progress-fill" id="adProgressFill"></div></div>
+  </div>
+</div>
+
+<!-- Modal عام (فتح الصندوق) -->
+<div id="genericModalOverlay" class="chest-reveal-overlay hidden">
+  <div class="chest-reveal-modal" id="genericModalContent"></div>
+</div>
+
+<!-- شاشة الصدارة (Overlay كامل) -->
+<div id="leaderboardOverlay" class="leaderboard-overlay hidden">
+  <div class="leaderboard-overlay-header">
+    <button id="leaderboardBackBtn" class="lb-back-btn" aria-label="back">
+      <span>←</span> <span data-i18n="back">رجوع</span>
+    </button>
+    <h2 data-i18n="leaderboardTitle">لوحة الصدارة</h2>
+  </div>
+  <div class="leaderboard-overlay-body">
+    <p class="leaderboard-overlay-sub" data-i18n="leaderboardSub">أكتر اللاعبين جمعوا CCL</p>
+    <div class="my-rank" id="myRank"></div>
+    <div class="podium" id="podium"></div>
+    <div class="board-list" id="boardList"></div>
   </div>
 </div>
 
