@@ -47,17 +47,18 @@ AIRDROP_REFERRAL_REQUIREMENT = 10
 AIRDROP_ENGAGEMENT_TAPS_REQUIREMENT = 3000  # مقياس "التفاعل" المقترح
 
 # ---------- المفاتيح والمزرعة ----------
-TAP_KEY_CHANCE = 0.01   # 1% من كل ضغطة
-AD_KEY_CHANCE = 0.20    # 20% من كل إعلان
+TAP_KEY_CHANCE = 0.002   # 0.2% من كل ضغطة (قليل جداً)، بحد أقصى مفتاح واحد باليوم
+AD_KEY_CHANCE = 0.05     # 5% من كل إعلان، بحد أقصى مفتاح واحد باليوم
 FARM_PLOT_COUNT = 9     # عدد قطع الأرض في المزرعة
 
 RARITY_CONFIG = {
-    "common":    {"usd": 0.01, "hours": 4,  "chest_prob": 97.5},
-    "uncommon":  {"usd": 0.03, "hours": 6,  "chest_prob": 1.70},
-    "rare":      {"usd": 0.08, "hours": 8,  "chest_prob": 0.55},
-    "epic":      {"usd": 0.15, "hours": 10, "chest_prob": 0.20},
-    "legendary": {"usd": 0.50, "hours": 12, "chest_prob": 0.05},
+    "common":    {"usd": 0.01, "hours": 4,  "chest_prob": 45.0},
+    "uncommon":  {"usd": 0.03, "hours": 6,  "chest_prob": 3.4},
+    "rare":      {"usd": 0.08, "hours": 8,  "chest_prob": 1.1},
+    "epic":      {"usd": 0.15, "hours": 10, "chest_prob": 0.4},
+    "legendary": {"usd": 0.50, "hours": 12, "chest_prob": 0.1},
 }
+CHEST_NOTHING_PROB = 50.0  # نسبة إن الصندوق ميطلعش حاجة
 RARITY_ORDER = ["common", "uncommon", "rare", "epic", "legendary"]
 
 # 10 معالم، كل واحد بيغطي 10 مستويات = 100 مستوى بالظبط
@@ -120,7 +121,9 @@ def init_db():
                 seeds_uncommon INTEGER NOT NULL DEFAULT 0,
                 seeds_rare INTEGER NOT NULL DEFAULT 0,
                 seeds_epic INTEGER NOT NULL DEFAULT 0,
-                seeds_legendary INTEGER NOT NULL DEFAULT 0
+                seeds_legendary INTEGER NOT NULL DEFAULT 0,
+                last_tap_key_date TEXT NOT NULL DEFAULT '',
+                last_ad_key_date TEXT NOT NULL DEFAULT ''
             )
             """
         )
@@ -148,6 +151,8 @@ def init_db():
             "seeds_rare": "INTEGER NOT NULL DEFAULT 0",
             "seeds_epic": "INTEGER NOT NULL DEFAULT 0",
             "seeds_legendary": "INTEGER NOT NULL DEFAULT 0",
+            "last_tap_key_date": "TEXT NOT NULL DEFAULT ''",
+            "last_ad_key_date": "TEXT NOT NULL DEFAULT ''",
         }
         for col, coltype in migrations.items():
             if col not in existing_cols:
@@ -420,21 +425,32 @@ def tap_batch(user_id: int, count: int):
 
         level_before = compute_level(coins)
         applied = min(count, energy)
+
+        today = _today_str()
+        already_won_tap_key_today = row["last_tap_key_date"] == today
         keys_won = 0
         for _ in range(applied):
             lvl = compute_level(coins)
             coins += coins_per_tap(lvl)
-            if roll_key_from_tap():
-                keys_won += 1
+            if not already_won_tap_key_today and random.random() < TAP_KEY_CHANCE:
+                keys_won = 1
+                already_won_tap_key_today = True  # مفتاح واحد بس من الضغط في اليوم
         energy -= applied
         total_taps += applied
         level_after = compute_level(coins)
 
-        conn.execute(
-            "UPDATE users SET coins=?, energy=?, last_full_refill=?, total_taps=?, "
-            "last_active=?, keys_count=keys_count+? WHERE user_id=?",
-            (coins, energy, last_refill, total_taps, now, keys_won, user_id),
-        )
+        if keys_won > 0:
+            conn.execute(
+                "UPDATE users SET coins=?, energy=?, last_full_refill=?, total_taps=?, "
+                "last_active=?, keys_count=keys_count+?, last_tap_key_date=? WHERE user_id=?",
+                (coins, energy, last_refill, total_taps, now, keys_won, today, user_id),
+            )
+        else:
+            conn.execute(
+                "UPDATE users SET coins=?, energy=?, last_full_refill=?, total_taps=?, "
+                "last_active=? WHERE user_id=?",
+                (coins, energy, last_refill, total_taps, now, user_id),
+            )
         conn.commit()
 
         return {
@@ -476,12 +492,23 @@ def watch_ad(user_id: int, ad_type: str):
         coins = row["coins"] + reward
         ads_watched = row["ads_watched"] + 1
         remaining -= 1
-        won_key = roll_key_from_ad()
 
-        conn.execute(
-            f"UPDATE users SET coins=?, ads_watched=?, last_ad_time=?, last_active=?, "
-            f"{remaining_col}=?, {refill_col}=?, keys_count=keys_count+? WHERE user_id=?",
-            (coins, ads_watched, now, now, remaining, refill_ts, 1 if won_key else 0, user_id),
+        today = _today_str()
+        already_won_ad_key_today = row["last_ad_key_date"] == today
+        won_key = (not already_won_ad_key_today) and (random.random() < AD_KEY_CHANCE)
+
+        if won_key:
+            conn.execute(
+                f"UPDATE users SET coins=?, ads_watched=?, last_ad_time=?, last_active=?, "
+                f"{remaining_col}=?, {refill_col}=?, keys_count=keys_count+1, last_ad_key_date=? "
+                f"WHERE user_id=?",
+                (coins, ads_watched, now, now, remaining, refill_ts, today, user_id),
+            )
+        else:
+            conn.execute(
+                f"UPDATE users SET coins=?, ads_watched=?, last_ad_time=?, last_active=?, "
+                f"{remaining_col}=?, {refill_col}=? WHERE user_id=?",
+                (coins, ads_watched, now, now, remaining, refill_ts, user_id),
         )
         conn.commit()
         return {"reward": reward, "ad_type": ad_type, "remaining": remaining, "won_key": won_key}
@@ -586,12 +613,12 @@ def claim_checkin(user_id: int):
         reward = DAILY_REWARDS[(streak - 1) % 7]
         coins = row["coins"] + reward
         conn.execute(
-            "UPDATE users SET coins=?, checkin_streak=?, last_checkin_date=?, last_active=? "
-            "WHERE user_id=?",
+            "UPDATE users SET coins=?, checkin_streak=?, last_checkin_date=?, last_active=?, "
+            "keys_count=keys_count+1 WHERE user_id=?",
             (coins, streak, today, time.time(), user_id),
         )
         conn.commit()
-        return {"reward": reward, "streak": streak}
+        return {"reward": reward, "streak": streak, "key_won": True}
 
 
 # ---------- الدعوات ----------
@@ -1059,17 +1086,12 @@ def admin_set_withdrawal_status(withdrawal_id: int, status: str):
 
 # ---------- المفاتيح والصندوق ----------
 
-def roll_key_from_tap() -> bool:
-    return random.random() < TAP_KEY_CHANCE
-
-
-def roll_key_from_ad() -> bool:
-    return random.random() < AD_KEY_CHANCE
-
-
-def _roll_rarity() -> str:
+def _roll_rarity():
+    """يرجع اسم الندرة، أو None لو الصندوق طلع فاضي"""
     roll = random.uniform(0, 100)
-    cumulative = 0
+    if roll <= CHEST_NOTHING_PROB:
+        return None
+    cumulative = CHEST_NOTHING_PROB
     for rarity in RARITY_ORDER:
         cumulative += RARITY_CONFIG[rarity]["chest_prob"]
         if roll <= cumulative:
@@ -1086,6 +1108,11 @@ def open_chest(user_id: int):
             return {"error": "no_keys"}
 
         rarity = _roll_rarity()
+        if rarity is None:
+            conn.execute("UPDATE users SET keys_count=keys_count-1 WHERE user_id=?", (user_id,))
+            conn.commit()
+            return {"rarity": None}
+
         seed_col = f"seeds_{rarity}"
         conn.execute(
             f"UPDATE users SET keys_count=keys_count-1, {seed_col}={seed_col}+1 WHERE user_id=?",
