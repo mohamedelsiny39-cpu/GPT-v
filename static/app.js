@@ -337,13 +337,20 @@ async function finishAdWatch(adType, btnEl) {
     const state = await res.json();
     if (res.ok) {
       applyServerState(state);
-      showToast(state.won_key ? `+${state.ad_reward} CCL 🔑 +1 ${t("keys")}!` : `+${state.ad_reward} CCL`);
+      const keyLine = state.won_key ? `<div class="chest-reveal-value">🔑 +1 ${t("keys")}!</div>` : "";
+      openGenericModal(`
+        <div class="chest-reveal-icon">🎉</div>
+        <div class="chest-reveal-name">+${state.ad_reward} CCL</div>
+        ${keyLine}
+        <button class="chest-reveal-close" id="adRewardCloseBtn">${t("nice")}</button>
+      `);
+      document.getElementById("adRewardCloseBtn").addEventListener("click", closeGenericModal);
       if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
     } else if (state.error === "limit_reached") {
       showToast(`${t("dailyLimitReached")} ${Math.ceil(state.seconds_left / 60)}m`);
     }
   } catch (e) { /* تجاهل */ }
-  startButtonCooldown(btnEl, 8);
+  startButtonCooldown(btnEl, 10);
 }
 
 setupAdButton(els.adBtnVideo, "interstitial", undefined);
