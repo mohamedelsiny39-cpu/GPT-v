@@ -449,8 +449,11 @@ def admin_user_detail(user_id):
         return redirect(url_for("admin_dashboard"))
     user["level"] = db.compute_level(user["coins"])
     claimed_tasks = db.get_user_claimed_tasks(user_id)
+    plots = db.admin_get_user_plots(user_id)
+    crops = db.admin_get_user_crops(user_id)
     return render_template(
-        "admin_user_detail.html", user=user, claimed_tasks=claimed_tasks, now=time.time()
+        "admin_user_detail.html", user=user, claimed_tasks=claimed_tasks,
+        plots=plots, crops=crops, rarity_config=db.RARITY_CONFIG, now=time.time()
     )
 
 
@@ -487,6 +490,20 @@ def admin_user_delete(user_id):
 @admin_required
 def admin_user_unclaim(user_id, task_id):
     db.admin_unclaim_task(user_id, task_id)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
+@app.route("/admin/user/<int:user_id>/delete_plot/<int:plot_id>", methods=["POST"])
+@admin_required
+def admin_user_delete_plot(user_id, plot_id):
+    db.admin_delete_plot(plot_id)
+    return redirect(url_for("admin_user_detail", user_id=user_id))
+
+
+@app.route("/admin/user/<int:user_id>/delete_crop/<int:crop_id>", methods=["POST"])
+@admin_required
+def admin_user_delete_crop(user_id, crop_id):
+    db.admin_delete_crop(crop_id)
     return redirect(url_for("admin_user_detail", user_id=user_id))
 
 
