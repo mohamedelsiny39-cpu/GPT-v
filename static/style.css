@@ -238,8 +238,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-btn {
-  width: 130px;
-  height: 130px;
+  width: 195px;
+  height: 195px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
@@ -275,8 +275,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-img {
-  width: 110%;
-  height: 110%;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
   filter: drop-shadow(0 8px 16px rgba(0,0,0,0.35));
   pointer-events: none;
@@ -321,42 +321,55 @@ html[lang="en"] body { font-family: var(--font-en); }
   }
 }
 
-/* ===== أزرار الإعلانات ===== */
-.ad-row { display: flex; gap: 6px; margin-bottom: 8px; }
-.ad-mini-btn {
-  flex: 1;
+/* ===== زرار الإعلان ===== */
+.watch-ad-btn {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  background: linear-gradient(180deg, rgba(139,92,246,0.16), rgba(52,217,196,0.06));
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  gap: 12px;
+  width: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, rgba(139,92,246,0.28), rgba(52,217,196,0.18));
+  border: 1.5px solid rgba(245, 185, 66, 0.4);
   color: var(--text);
-  padding: 7px 4px 6px;
-  border-radius: 11px;
+  padding: 13px 16px;
+  border-radius: 16px;
   font-family: var(--font-body);
   cursor: pointer;
+  margin-bottom: 10px;
+  box-shadow: 0 4px 18px rgba(139, 92, 246, 0.2);
+  animation: adBtnPulse 2.4s ease-in-out infinite;
 }
-.ad-mini-btn:active { transform: scale(0.96); }
-.ad-mini-btn:disabled { opacity: 0.5; }
-.ad-mini-icon { font-size: 14px; }
-.ad-mini-label { font-size: 8.5px; font-weight: 700; text-align: center; line-height: 1.15; }
-.ad-mini-reward { font-family: var(--font-mono); font-size: 9px; color: var(--gold); font-weight: 700; }
-.ad-mini-remaining { font-family: var(--font-mono); font-size: 7.5px; color: var(--text-muted); }
-.ad-mini-badge {
+.watch-ad-btn:active { transform: scale(0.97); }
+.watch-ad-btn:disabled { opacity: 0.5; animation: none; }
+@keyframes adBtnPulse {
+  0%, 100% { box-shadow: 0 4px 18px rgba(139, 92, 246, 0.2); }
+  50% { box-shadow: 0 4px 26px rgba(245, 185, 66, 0.4); }
+}
+.watch-ad-shine {
   position: absolute;
-  top: -5px;
-  left: 5px;
-  font-size: 7px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 999px;
-  font-family: var(--font-mono);
+  top: 0; bottom: 0;
+  left: -60%;
+  width: 40%;
+  background: linear-gradient(100deg, transparent, rgba(255,255,255,0.25), transparent);
+  animation: adBtnShine 3s ease-in-out infinite;
 }
-.ad-badge-video { background: var(--purple); color: #fff; }
-.ad-badge-external { background: var(--teal); color: #06342e; }
-.ad-badge-game { background: var(--pink); color: #3a0620; }
+@keyframes adBtnShine {
+  0% { left: -60%; }
+  60% { left: 130%; }
+  100% { left: 130%; }
+}
+.watch-ad-icon {
+  font-size: 26px;
+  animation: adIconBounce 1.8s ease-in-out infinite;
+}
+@keyframes adIconBounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-3px) rotate(-6deg); }
+}
+.watch-ad-text { display: flex; flex-direction: column; gap: 2px; text-align: right; }
+.watch-ad-title { font-weight: 800; font-size: 14px; }
+.watch-ad-sub { font-family: var(--font-mono); font-size: 11px; color: var(--gold); }
 
 /* ===== شريط التسجيل اليومي ===== */
 .checkin-strip {
@@ -1553,7 +1566,8 @@ html[lang="en"] .energy-refill { margin-right: 0; margin-left: auto; }
 
 @media (prefers-reduced-motion: reduce) {
   .coin-glow-ring, .particle, .spark,
-  .mine-walker, .mine-building, .mining-counter {
+  .mine-walker, .mine-building, .mining-counter,
+  .watch-ad-btn, .watch-ad-shine, .watch-ad-icon {
     animation: none !important;
   }
 }
