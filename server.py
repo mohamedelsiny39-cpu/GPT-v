@@ -162,6 +162,7 @@ def api_checkin_claim():
     state = build_state(row)
     state["checkin_reward"] = result["reward"]
     state["checkin_streak"] = result["streak"]
+    state["checkin_key_won"] = result["key_won"]
     return jsonify(state)
 
 
@@ -316,16 +317,20 @@ def api_withdrawals():
 
 # ---------- المزرعة والمفاتيح ----------
 
+def farm_state_payload(user_id):
+    state = db.get_farm_state(user_id)
+    state["rarity_config"] = db.RARITY_CONFIG
+    state["egp_per_usd"] = db.EGP_PER_USD
+    return state
+
+
 @app.route("/api/farm")
 def api_farm():
     user_id = request.args.get("user_id", type=int)
     if not user_id:
         return jsonify({"error": "user_id required"}), 400
     db.get_or_create_user(user_id)
-    state = db.get_farm_state(user_id)
-    state["rarity_config"] = db.RARITY_CONFIG
-    state["egp_per_usd"] = db.EGP_PER_USD
-    return jsonify(state)
+    return jsonify(farm_state_payload(user_id))
 
 
 @app.route("/api/farm/open_chest", methods=["POST"])
@@ -337,7 +342,7 @@ def api_farm_open_chest():
     result = db.open_chest(user_id)
     if "error" in result:
         return jsonify(result), 400
-    state = db.get_farm_state(user_id)
+    state = farm_state_payload(user_id)
     state["opened_rarity"] = result["rarity"]
     return jsonify(state)
 
@@ -353,7 +358,7 @@ def api_farm_plant():
     result = db.plant_seed(user_id, int(slot_index), rarity)
     if "error" in result:
         return jsonify(result), 400
-    return jsonify(db.get_farm_state(user_id))
+    return jsonify(farm_state_payload(user_id))
 
 
 @app.route("/api/farm/harvest", methods=["POST"])
@@ -366,7 +371,7 @@ def api_farm_harvest():
     result = db.harvest_plot(user_id, int(slot_index))
     if "error" in result:
         return jsonify(result), 400
-    state = db.get_farm_state(user_id)
+    state = farm_state_payload(user_id)
     state["harvested_rarity"] = result["rarity"]
     state["harvested_value_usd"] = result["value_usd"]
     return jsonify(state)
@@ -382,7 +387,7 @@ def api_farm_sell():
     result = db.sell_crops(user_id, crop_id)
     if "error" in result:
         return jsonify(result), 400
-    state = db.get_farm_state(user_id)
+    state = farm_state_payload(user_id)
     state["sold_usd"] = result["sold_usd"]
     state["wallet_balance_usd"] = result["wallet_balance_usd"]
     return jsonify(state)
