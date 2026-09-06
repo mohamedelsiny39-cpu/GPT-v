@@ -24,11 +24,10 @@ REFERRAL_REWARD = 500
 REFERRAL_SIGNUP_BONUS = 100
 
 # ---------- الإعلانات ----------
-AD_REFILL_SECONDS = 3600  # كل نوع إعلان بيرجع يتجدد كل ساعة (زي الطاقة)
-AD_MIN_GAP_SECONDS = 8    # أقل فاصل بين ضغطتين على أي زرار إعلان (حماية من double-click)
+AD_REFILL_SECONDS = 86400  # حد الإعلانات بقى يومي بدل ساعي
+AD_MIN_GAP_SECONDS = 8
 AD_CONFIG = {
-    "interstitial": {"min_reward": 15, "max_reward": 20, "hourly_limit": 50},
-    "popup": {"min_reward": 5, "max_reward": 10, "hourly_limit": 50},
+    "interstitial": {"min_reward": 15, "max_reward": 15, "hourly_limit": 50},
 }
 
 # ---------- اللعبة البسيطة (صندوق الحظ) ----------
@@ -47,8 +46,8 @@ AIRDROP_REFERRAL_REQUIREMENT = 10
 AIRDROP_ENGAGEMENT_TAPS_REQUIREMENT = 3000  # مقياس "التفاعل" المقترح
 
 # ---------- المفاتيح والمزرعة ----------
-TAP_KEY_CHANCE = 0.05   # 0.2% من كل ضغطة (قليل جداً)، بحد أقصى مفتاح واحد باليوم
-AD_KEY_CHANCE = 0.10     # 5% من كل إعلان، بحد أقصى مفتاح واحد باليوم
+TAP_KEY_CHANCE = 0.002   # 0.2% من كل ضغطة (قليل جداً)، بحد أقصى مفتاح واحد باليوم
+AD_KEY_CHANCE = 0.05     # 5% من كل إعلان، بحد أقصى مفتاح واحد باليوم
 FARM_PLOT_COUNT = 9     # عدد قطع الأرض في المزرعة
 
 RARITY_CONFIG = {
@@ -171,6 +170,23 @@ def init_db():
             )
             """
         )
+        wd_cols = {r[1] for r in conn.execute("PRAGMA table_info(withdrawals)")}
+        wd_required = {"user_id", "method", "target", "amount_usd", "status", "created_at"}
+        if wd_cols and not wd_required.issubset(wd_cols):
+            conn.execute("DROP TABLE IF EXISTS withdrawals")
+            conn.execute(
+                """
+                CREATE TABLE withdrawals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    method TEXT NOT NULL,
+                    target TEXT NOT NULL,
+                    amount_usd REAL NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'pending',
+                    created_at REAL NOT NULL
+                )
+                """
+            )
 
         conn.execute(
             """
@@ -385,7 +401,7 @@ def get_or_create_user(user_id: int, first_name: str = "", photo_url: str = ""):
                 "VALUES (?, ?, ?, 0, ?, ?, ?, 0, 0, 0, '', ?, ?, ?, ?, ?, ?, ?, ?)",
                 (user_id, first_name, photo_url, MAX_ENERGY, MAX_ENERGY, now, now, now,
                  AD_CONFIG["interstitial"]["hourly_limit"], now,
-                 AD_CONFIG["popup"]["hourly_limit"], now,
+                 0, now,
                  MINIGAME_HOURLY_LIMIT, now),
             )
             conn.commit()
@@ -876,6 +892,13 @@ ADMIN_EDITABLE_FIELDS = {
     "checkin_streak": int,
     "ad_interstitial_remaining": int,
     "ad_popup_remaining": int,
+    "wallet_balance_usd": float,
+    "keys_count": int,
+    "seeds_common": int,
+    "seeds_uncommon": int,
+    "seeds_rare": int,
+    "seeds_epic": int,
+    "seeds_legendary": int,
 }
 
 
@@ -893,7 +916,7 @@ def admin_update_user(user_id: int, updates: dict):
         caster = ADMIN_EDITABLE_FIELDS[key]
         try:
             clean[key] = caster(value)
-            if caster is int:
+            if caster in (int, float):
                 clean[key] = max(0, clean[key])
         except (TypeError, ValueError):
             continue
@@ -932,7 +955,7 @@ def admin_reset_ad_limits(user_id: int):
             "UPDATE users SET ad_interstitial_remaining=?, ad_interstitial_refill=?, "
             "ad_popup_remaining=?, ad_popup_refill=? WHERE user_id=?",
             (AD_CONFIG["interstitial"]["hourly_limit"], now,
-             AD_CONFIG["popup"]["hourly_limit"], now, user_id),
+             0, now, user_id),
         )
         conn.commit()
 
@@ -1247,3 +1270,43 @@ def sell_crops(user_id: int, crop_id=None):
         conn.execute("UPDATE users SET wallet_balance_usd=? WHERE user_id=?", (new_balance, user_id))
         conn.commit()
         return {"ok": True, "sold_usd": total, "wallet_balance_usd": new_balance}
+
+
+# ---------- تحكم الأدمن في المزرعة ----------
+
+def admin_get_user_plots(user_id: int):
+    with _lock, _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM farm_plots WHERE user_id=? ORDER BY slot_index", (user_id,)
+        ).fetchall()
+        now = time.time()
+        result = []
+        for r in rows:
+            hours = RARITY_CONFIG[r["rarity"]]["hours"]
+            elapsed = now - r["planted_at"]
+            result.append({
+                "id": r["id"], "slot_index": r["slot_index"], "rarity": r["rarity"],
+                "ready": elapsed >= hours * 3600,
+                "seconds_left": max(0, int(hours * 3600 - elapsed)),
+            })
+        return result
+
+
+def admin_delete_plot(plot_id: int):
+    with _lock, _get_conn() as conn:
+        conn.execute("DELETE FROM farm_plots WHERE id=?", (plot_id,))
+        conn.commit()
+
+
+def admin_get_user_crops(user_id: int):
+    with _lock, _get_conn() as conn:
+        rows = conn.execute(
+            "SELECT * FROM harvested_crops WHERE user_id=? ORDER BY harvested_at DESC", (user_id,)
+        ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def admin_delete_crop(crop_id: int):
+    with _lock, _get_conn() as conn:
+        conn.execute("DELETE FROM harvested_crops WHERE id=?", (crop_id,))
+        conn.commit()
