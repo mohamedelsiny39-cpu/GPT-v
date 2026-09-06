@@ -77,11 +77,8 @@ const els = {
   levelBarNext: document.getElementById("levelBarNext"),
   levelBarFill: document.getElementById("levelBarFill"),
   adBtnVideo: document.getElementById("adBtnVideo"),
-  adBtnExternal: document.getElementById("adBtnExternal"),
   adVideoReward: document.getElementById("adVideoReward"),
-  adExternalReward: document.getElementById("adExternalReward"),
   adVideoRemaining: document.getElementById("adVideoRemaining"),
-  adExternalRemaining: document.getElementById("adExternalRemaining"),
   adOverlay: document.getElementById("adOverlay"),
   adProgressFill: document.getElementById("adProgressFill"),
   checkinStreakText: document.getElementById("checkinStreakText"),
@@ -145,13 +142,8 @@ function renderRefillCountdown() {
 function renderAdButtons() {
   if (S.ads.interstitial) {
     const a = S.ads.interstitial;
-    els.adVideoReward.textContent = `+${a.min_reward}-${a.max_reward}`;
+    els.adVideoReward.textContent = `+${a.min_reward}`;
     els.adVideoRemaining.textContent = `${a.remaining}/${a.limit}`;
-  }
-  if (S.ads.popup) {
-    const a = S.ads.popup;
-    els.adExternalReward.textContent = `+${a.min_reward}-${a.max_reward}`;
-    els.adExternalRemaining.textContent = `${a.remaining}/${a.limit}`;
   }
 }
 
@@ -355,19 +347,6 @@ async function finishAdWatch(adType, btnEl) {
 }
 
 setupAdButton(els.adBtnVideo, "interstitial", undefined);
-setupAdButton(els.adBtnExternal, "popup", "pop");
-
-// ===== In-App Interstitial (تلقائي في الخلفية، من غير مكافأة) =====
-function initInAppAds() {
-  waitForAdSdk().then((ready) => {
-    if (!ready || typeof window[AD_ZONE_FN] !== "function") return;
-    window[AD_ZONE_FN]({
-      type: "inApp",
-      inAppSettings: { frequency: 2, capping: 0.1, interval: 30, timeout: 5, everyPage: false },
-    });
-  });
-}
-initInAppAds();
 
 // ===== التسجيل اليومي =====
 async function loadCheckin() {
