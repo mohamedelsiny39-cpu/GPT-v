@@ -395,6 +395,9 @@ els.checkinBtn.addEventListener("click", async () => {
     if (res.ok) {
       applyServerState(state);
       showToast(`${t("checkinToast")} +${state.checkin_reward} CCL 🔥`);
+      if (state.checkin_key_won) {
+        setTimeout(() => showToast(`🔑 +1 ${t("keys")}!`), 1600);
+      }
       if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
       loadCheckin();
     } else {
@@ -1226,17 +1229,28 @@ document.getElementById("openChestBtn").addEventListener("click", async () => {
     if (res.ok) {
       farmState = data;
       const rarity = data.opened_rarity;
-      const meta = RARITY_META[rarity];
-      const cfg = farmState.rarity_config[rarity];
-      openGenericModal(`
-        <div class="chest-reveal-icon rarity-${rarity}" style="background:none;">${meta.icon}</div>
-        <div class="chest-reveal-name">${t("rarity_" + rarity)}</div>
-        <div class="chest-reveal-value">${farmCurrency(cfg.usd)} · ${t("harvestIn")} ${cfg.hours}${t("hourShort")}</div>
-        <button class="chest-reveal-close" id="chestCloseBtn">${t("nice")}</button>
-      `);
+
+      if (rarity === null || rarity === undefined) {
+        // الصندوق طلع فاضي
+        openGenericModal(`
+          <div class="chest-reveal-icon">💨</div>
+          <div class="chest-reveal-name">${t("chestEmpty")}</div>
+          <div class="chest-reveal-value">${t("tryAgainLater")}</div>
+          <button class="chest-reveal-close" id="chestCloseBtn">${t("nice")}</button>
+        `);
+      } else {
+        const meta = RARITY_META[rarity];
+        const cfg = farmState.rarity_config[rarity];
+        openGenericModal(`
+          <div class="chest-reveal-icon rarity-glow-${rarity}">${meta.icon}</div>
+          <div class="chest-reveal-name">${t("rarity_" + rarity)}</div>
+          <div class="chest-reveal-value">${farmCurrency(cfg.usd)} · ${t("harvestIn")} ${cfg.hours}${t("hourShort")}</div>
+          <button class="chest-reveal-close" id="chestCloseBtn">${t("nice")}</button>
+        `);
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+      }
       document.getElementById("chestCloseBtn").addEventListener("click", closeGenericModal);
       renderFarm();
-      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
     } else if (data.error === "no_keys") {
       showToast(t("noKeysYet"));
     }
