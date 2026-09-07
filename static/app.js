@@ -408,7 +408,7 @@ async function finishAdWatch(adType, btnEl) {
       lastAdClientTime = Date.now();
 
       // يبدأ التايمر بعد نجاح المشاهدة والمكافأة
-      startButtonCooldown(btnEl, 10);
+      startButtonCooldown(btnEl, 15);
 
     } else if (state.error === "limit_reached") {
 
