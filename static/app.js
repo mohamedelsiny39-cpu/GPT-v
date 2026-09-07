@@ -270,21 +270,52 @@ function waitForAdSdk(timeoutMs = 4000, intervalMs = 200) {
 }
 
 function startButtonCooldown(btnEl, seconds) {
-  const labelEl = btnEl.querySelector(".ad-mini-label");
-  const originalLabel = labelEl.dataset.original || labelEl.textContent;
-  labelEl.dataset.original = originalLabel;
+  if (!btnEl) return;
+
+  const titleEl = btnEl.querySelector(".watch-ad-title");
+
+  // لو الزر مش هو زر الإعلان الأساسي
+  if (!titleEl) {
+    btnEl.disabled = true;
+
+    let secondsLeft = seconds;
+
+    const interval = setInterval(() => {
+      secondsLeft -= 1;
+
+      if (secondsLeft <= 0) {
+        clearInterval(interval);
+        btnEl.disabled = false;
+      }
+    }, 1000);
+
+    return;
+  }
+
+  const originalTitle =
+    titleEl.dataset.originalTitle || titleEl.textContent;
+
+  titleEl.dataset.originalTitle = originalTitle;
+
   btnEl.disabled = true;
+
   let secondsLeft = seconds;
-  labelEl.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
+
+  titleEl.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
+
   const interval = setInterval(() => {
     secondsLeft -= 1;
+
     if (secondsLeft <= 0) {
       clearInterval(interval);
-      labelEl.textContent = originalLabel;
+
+      titleEl.textContent = originalTitle;
       btnEl.disabled = false;
-    } else {
-      labelEl.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
+
+      return;
     }
+
+    titleEl.textContent = `${t("waitSeconds")} ${secondsLeft}s`;
   }, 1000);
 }
 
@@ -312,7 +343,6 @@ function setupAdButton(btnEl, adType, sdkArg) {
       return;
     }
 
-    lastAdClientTime = now;
     els.adProgressFill.style.width = "70%";
 
     const call = sdkArg === undefined ? window[AD_ZONE_FN]() : window[AD_ZONE_FN](sdkArg);
@@ -328,29 +358,79 @@ function setupAdButton(btnEl, adType, sdkArg) {
 
 async function finishAdWatch(adType, btnEl) {
   els.adOverlay.classList.add("hidden");
+
+  let rewardSuccess = false;
+
   try {
     const res = await fetch("/api/watch_ad", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: user.id, first_name: user.first_name, photo_url: user.photo_url, ad_type: adType }),
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        user_id: user.id,
+        first_name: user.first_name,
+        photo_url: user.photo_url,
+        ad_type: adType
+      })
     });
+
     const state = await res.json();
+
     if (res.ok) {
+      // تم استلام المكافأة بنجاح
+      rewardSuccess = true;
+
       applyServerState(state);
-      const keyLine = state.won_key ? `<div class="chest-reveal-value">🔑 +1 ${t("keys")}!</div>` : "";
+
+      const keyLine = state.won_key
+        ? `<div class="chest-reveal-value">🔑 +1 ${t("keys")}!</div>`
+        : "";
+
       openGenericModal(`
         <div class="chest-reveal-icon">🎉</div>
         <div class="chest-reveal-name">+${state.ad_reward} CCL</div>
         ${keyLine}
-        <button class="chest-reveal-close" id="adRewardCloseBtn">${t("nice")}</button>
+        <button class="chest-reveal-close" id="adRewardCloseBtn">
+          ${t("nice")}
+        </button>
       `);
-      document.getElementById("adRewardCloseBtn").addEventListener("click", closeGenericModal);
-      if (tg && tg.HapticFeedback) tg.HapticFeedback.notificationOccurred("success");
+
+      document
+        .getElementById("adRewardCloseBtn")
+        .addEventListener("click", closeGenericModal);
+
+      if (tg && tg.HapticFeedback) {
+        tg.HapticFeedback.notificationOccurred("success");
+      }
+
+      // يبدأ حساب الـ 10 ثواني من لحظة إتمام الإعلان
+      lastAdClientTime = Date.now();
+
+      // يبدأ التايمر بعد نجاح المشاهدة والمكافأة
+      startButtonCooldown(btnEl, 10);
+
     } else if (state.error === "limit_reached") {
-      showToast(`${t("dailyLimitReached")} ${Math.ceil(state.seconds_left / 60)}m`);
+
+      showToast(
+        `${t("dailyLimitReached")} ${Math.ceil(state.seconds_left / 60)}m`
+      );
+
+      btnEl.disabled = false;
+
+    } else {
+
+      btnEl.disabled = false;
+      showToast(t("noAdsAvailable"));
     }
-  } catch (e) { /* تجاهل */ }
-  startButtonCooldown(btnEl, 10);
+
+  } catch (e) {
+
+    console.error("watch_ad error:", e);
+
+    btnEl.disabled = false;
+    showToast(t("noAdsAvailable"));
+  }
 }
 
 setupAdButton(els.adBtnVideo, "interstitial", undefined);
