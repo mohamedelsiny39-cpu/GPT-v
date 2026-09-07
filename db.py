@@ -592,12 +592,19 @@ def get_minigame_status(user_id: int):
 
 # ---------- تسجيل الدخول اليومي ----------
 
+EGYPT_UTC_OFFSET_HOURS = 2  # توقيت مصر (بدون توقيت صيفي)
+
+
+def _egypt_now():
+    return datetime.datetime.utcnow() + datetime.timedelta(hours=EGYPT_UTC_OFFSET_HOURS)
+
+
 def _today_str():
-    return datetime.datetime.utcnow().strftime("%Y-%m-%d")
+    return _egypt_now().strftime("%Y-%m-%d")
 
 
 def _yesterday_str():
-    return (datetime.datetime.utcnow() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    return (_egypt_now() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
 
 def get_checkin_status(user_id: int):
