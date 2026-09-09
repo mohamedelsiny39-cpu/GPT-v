@@ -1,92 +1,202 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>لوحة تحكم CanCel</title>
-<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
-</head>
-<body>
-<div class="admin-wrap">
+{% extends "admin_base.html" %}
+{% block title %}نظرة عامة - CanCel Admin{% endblock %}
+{% block content %}
 
-  <header class="admin-header">
-    <h1>لوحة تحكم CanCel</h1>
-    <div class="header-links">
-      <a href="{{ url_for('admin_tasks') }}" class="nav-link">المهام والإنجازات</a>
-      <a href="{{ url_for('admin_withdrawals') }}" class="nav-link">طلبات السحب</a>
-      <a href="{{ url_for('admin_logout') }}" class="logout-link">خروج</a>
-    </div>
-  </header>
+<h1 class="page-title">نظرة عامة</h1>
 
-  <div class="stat-grid">
-    <div class="stat-card">
-      <div class="stat-num">{{ "{:,}".format(stats.total_users) }}</div>
-      <div class="stat-label">إجمالي المستخدمين</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">{{ "{:,}".format(stats.total_coins) }}</div>
-      <div class="stat-label">إجمالي CCL الموزّعة</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">{{ "{:,}".format(stats.total_taps) }}</div>
-      <div class="stat-label">إجمالي الضغطات</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">{{ "{:,}".format(stats.total_ads) }}</div>
-      <div class="stat-label">إجمالي الإعلانات المشاهدة</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-num">{{ "{:,}".format(stats.total_referrals) }}</div>
-      <div class="stat-label">إجمالي الدعوات</div>
-    </div>
+<!-- إحصائيات شاملة (كل الوقت) -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon">👥</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_users) }}</div>
+    <div class="stat-label">إجمالي المستخدمين</div>
   </div>
-
-  <h2 class="section-title">كل اللاعبين ({{ users|length }})</h2>
-  <div class="table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>الاسم</th>
-          <th>CCL</th>
-          <th>تعديل الرصيد</th>
-          <th>المستوى</th>
-          <th>الطاقة</th>
-          <th>ضغطات</th>
-          <th>إعلانات</th>
-          <th>دعوات</th>
-          <th>آخر نشاط</th>
-          <th>User ID</th>
-          <th>تحكم كامل</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for u in users %}
-        <tr>
-          <td>{{ loop.index }}</td>
-          <td>{{ u.first_name or "—" }}</td>
-          <td class="mono">{{ "{:,}".format(u.coins) }}</td>
-          <td>
-            <form class="coin-edit-form" method="post" action="{{ url_for('admin_set_coins', user_id=u.user_id) }}">
-              <input type="number" name="new_coins" value="{{ u.coins }}" min="0" />
-              <button type="submit">تحديث</button>
-            </form>
-          </td>
-          <td class="mono">{{ u.level if u.level is defined else "—" }}</td>
-          <td class="mono">{{ u.energy }}/{{ u.max_energy }}</td>
-          <td class="mono">{{ "{:,}".format(u.total_taps) }}</td>
-          <td class="mono">{{ "{:,}".format(u.ads_watched) }}</td>
-          <td class="mono">{{ u.referral_count }}</td>
-          <td class="mono muted">{{ ((now - u.last_active) / 60) | round(0, 'floor') | int }} د</td>
-          <td class="mono muted">{{ u.user_id }}</td>
-          <td><a href="{{ url_for('admin_user_detail', user_id=u.user_id) }}" class="nav-link small-nav">تفاصيل</a></td>
-        </tr>
-        {% endfor %}
-      </tbody>
-    </table>
+  <div class="stat-card">
+    <div class="stat-icon">🪙</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_coins) }}</div>
+    <div class="stat-label">إجمالي CCL الموزّعة</div>
   </div>
-
+  <div class="stat-card highlight">
+    <div class="stat-icon">💰</div>
+    <div class="stat-num">${{ "%.2f"|format(stats.total_wallet_usd) }}</div>
+    <div class="stat-label">إجمالي أرصدة المحافظ</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⛏️</div>
+    <div class="stat-num">${{ "%.2f"|format(stats.total_lifetime_mined_usd) }}</div>
+    <div class="stat-label">إجمالي التعدين مدى الحياة</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🔑</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_keys) }}</div>
+    <div class="stat-label">مفاتيح في حوزة اللاعبين</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🌾</div>
+    <div class="stat-num">{{ stats.active_farm_plots }}</div>
+    <div class="stat-label">قطع أرض مزروعة حالياً</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📦</div>
+    <div class="stat-num">${{ "%.2f"|format(stats.unsold_crops_value_usd) }}</div>
+    <div class="stat-label">قيمة محصول لسه مش متباع ({{ stats.unsold_crops_count }})</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">👣</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_taps) }}</div>
+    <div class="stat-label">إجمالي الضغطات</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">📺</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_ads) }}</div>
+    <div class="stat-label">إجمالي الإعلانات المشاهدة</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🤝</div>
+    <div class="stat-num">{{ "{:,}".format(stats.total_referrals) }}</div>
+    <div class="stat-label">إجمالي الدعوات</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">⚙️</div>
+    <div class="stat-num">{{ stats.active_mining_sessions }}</div>
+    <div class="stat-label">دورات تعدين شغالة الآن</div>
+  </div>
 </div>
-</body>
-</html>
+
+<!-- طلبات السحب -->
+<div class="withdraw-summary-row">
+  <div class="withdraw-summary-card pending">
+    <div class="ws-label">⏳ قيد الانتظار</div>
+    <div class="ws-num">{{ stats.withdrawals_by_status.get('pending', {}).get('count', 0) }}</div>
+    <div class="ws-sub">${{ "%.2f"|format(stats.withdrawals_by_status.get('pending', {}).get('total_usd', 0)) }}</div>
+  </div>
+  <div class="withdraw-summary-card paid">
+    <div class="ws-label">✅ تم الدفع</div>
+    <div class="ws-num">{{ stats.withdrawals_by_status.get('paid', {}).get('count', 0) }}</div>
+    <div class="ws-sub">${{ "%.2f"|format(stats.withdrawals_by_status.get('paid', {}).get('total_usd', 0)) }}</div>
+  </div>
+  <div class="withdraw-summary-card rejected">
+    <div class="ws-label">❌ مرفوض</div>
+    <div class="ws-num">{{ stats.withdrawals_by_status.get('rejected', {}).get('count', 0) }}</div>
+    <div class="ws-sub">${{ "%.2f"|format(stats.withdrawals_by_status.get('rejected', {}).get('total_usd', 0)) }}</div>
+  </div>
+  <a href="{{ url_for('admin_withdrawals') }}" class="ws-manage-link">إدارة طلبات السحب ←</a>
+</div>
+
+<!-- فلترة بتاريخ مخصص -->
+<h2 class="section-title">📅 إحصائيات فترة مخصصة (بتوقيت مصر)</h2>
+<form class="date-filter-form" method="get">
+  <label>من <input type="date" name="start" value="{{ range_stats.start_date }}" /></label>
+  <label>إلى <input type="date" name="end" value="{{ range_stats.end_date }}" /></label>
+  <button type="submit" class="primary-btn">تحديث</button>
+  <div class="quick-range-btns">
+    <a href="?range=today">اليوم</a>
+    <a href="?range=7days">آخر 7 أيام</a>
+    <a href="?range=30days">آخر 30 يوم</a>
+  </div>
+</form>
+
+<div class="stat-grid range-grid">
+  <div class="stat-card">
+    <div class="stat-icon">🆕</div>
+    <div class="stat-num">{{ range_stats.new_users }}</div>
+    <div class="stat-label">مستخدمين جدد</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🟢</div>
+    <div class="stat-num">{{ range_stats.active_users }}</div>
+    <div class="stat-label">مستخدمين نشطين</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🌾</div>
+    <div class="stat-num">{{ range_stats.crops_count }}</div>
+    <div class="stat-label">محصول اتحصد (${{ "%.2f"|format(range_stats.crops_value_usd) }})</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-icon">🏆</div>
+    <div class="stat-num">{{ range_stats.task_claims_count }}</div>
+    <div class="stat-label">مهام اتستلمت ({{ "{:,}".format(range_stats.task_claims_reward) }} CCL)</div>
+  </div>
+</div>
+
+{% if range_stats.daily_new_users %}
+<div class="mini-chart-wrap">
+  <div class="mini-chart-title">المستخدمين الجدد يوم بيوم</div>
+  <div class="mini-chart">
+    {% set max_val = range_stats.daily_new_users.values() | max %}
+    {% for day, count in range_stats.daily_new_users.items() | sort %}
+    <div class="mini-chart-bar-wrap">
+      <div class="mini-chart-bar" style="height:{{ (count / max_val * 100) if max_val else 0 }}%;">
+        <span class="mini-chart-val">{{ count }}</span>
+      </div>
+      <span class="mini-chart-day">{{ day[5:] }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- كل اللاعبين -->
+<h2 class="section-title" id="users-section">كل اللاعبين ({{ users|length }})</h2>
+<input type="text" id="userSearchInput" class="user-search-input" placeholder="🔍 دور بالاسم أو الـ ID..." />
+
+<div class="table-wrap">
+  <table id="usersTable">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>الاسم</th>
+        <th>CCL</th>
+        <th>تعديل الرصيد</th>
+        <th>المستوى</th>
+        <th>محفظة $</th>
+        <th>الطاقة</th>
+        <th>ضغطات</th>
+        <th>إعلانات</th>
+        <th>دعوات</th>
+        <th>آخر نشاط</th>
+        <th>User ID</th>
+        <th>تحكم كامل</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in users %}
+      <tr>
+        <td>{{ loop.index }}</td>
+        <td class="user-name-cell">{{ u.first_name or "—" }}</td>
+        <td class="mono">{{ "{:,}".format(u.coins) }}</td>
+        <td>
+          <form class="coin-edit-form" method="post" action="{{ url_for('admin_set_coins', user_id=u.user_id) }}">
+            <input type="number" name="new_coins" value="{{ u.coins }}" min="0" />
+            <button type="submit">تحديث</button>
+          </form>
+        </td>
+        <td class="mono">{{ u.level if u.level is defined else "—" }}</td>
+        <td class="mono">{{ "%.2f"|format(u.wallet_balance_usd) }}</td>
+        <td class="mono">{{ u.energy }}/{{ u.max_energy }}</td>
+        <td class="mono">{{ "{:,}".format(u.total_taps) }}</td>
+        <td class="mono">{{ "{:,}".format(u.ads_watched) }}</td>
+        <td class="mono">{{ u.referral_count }}</td>
+        <td class="mono muted">{{ ((now - u.last_active) / 60) | round(0, 'floor') | int }} د</td>
+        <td class="mono muted user-id-cell">{{ u.user_id }}</td>
+        <td><a href="{{ url_for('admin_user_detail', user_id=u.user_id) }}" class="nav-link small-nav">تفاصيل</a></td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById("userSearchInput").addEventListener("input", (e) => {
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll("#usersTable tbody tr").forEach((row) => {
+      const name = row.querySelector(".user-name-cell").textContent.toLowerCase();
+      const id = row.querySelector(".user-id-cell").textContent.toLowerCase();
+      row.style.display = (name.includes(q) || id.includes(q)) ? "" : "none";
+    });
+  });
+</script>
+{% endblock %}
