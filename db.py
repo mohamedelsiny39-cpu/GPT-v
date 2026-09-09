@@ -873,9 +873,83 @@ def get_stats():
             "SELECT COUNT(*) as total_users, COALESCE(SUM(coins),0) as total_coins, "
             "COALESCE(SUM(total_taps),0) as total_taps, "
             "COALESCE(SUM(ads_watched),0) as total_ads, "
-            "COALESCE(SUM(referral_count),0) as total_referrals FROM users"
+            "COALESCE(SUM(referral_count),0) as total_referrals, "
+            "COALESCE(SUM(wallet_balance_usd),0) as total_wallet_usd, "
+            "COALESCE(SUM(keys_count),0) as total_keys, "
+            "COALESCE(SUM(lifetime_mined_usd),0) as total_lifetime_mined_usd, "
+            "SUM(CASE WHEN mining_start_ts > 0 THEN 1 ELSE 0 END) as active_mining_sessions "
+            "FROM users"
         ).fetchone()
-        return dict(row)
+        stats = dict(row)
+
+        wd = conn.execute(
+            "SELECT status, COUNT(*) c, COALESCE(SUM(amount_usd),0) s FROM withdrawals GROUP BY status"
+        ).fetchall()
+        stats["withdrawals_by_status"] = {r["status"]: {"count": r["c"], "total_usd": r["s"]} for r in wd}
+
+        plots = conn.execute("SELECT COUNT(*) c FROM farm_plots").fetchone()
+        stats["active_farm_plots"] = plots["c"]
+
+        crops = conn.execute(
+            "SELECT COUNT(*) c, COALESCE(SUM(value_usd),0) s FROM harvested_crops"
+        ).fetchone()
+        stats["unsold_crops_count"] = crops["c"]
+        stats["unsold_crops_value_usd"] = crops["s"]
+
+        return stats
+
+
+def _egypt_date_to_utc_ts(date_str: str, end_of_day: bool = False) -> float:
+    dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+    if end_of_day:
+        dt = dt + datetime.timedelta(days=1) - datetime.timedelta(seconds=1)
+    utc_naive = dt - datetime.timedelta(hours=EGYPT_UTC_OFFSET_HOURS)
+    return utc_naive.replace(tzinfo=datetime.timezone.utc).timestamp()
+
+
+def admin_range_stats(start_date_str: str, end_date_str: str):
+    start_ts = _egypt_date_to_utc_ts(start_date_str)
+    end_ts = _egypt_date_to_utc_ts(end_date_str, end_of_day=True)
+
+    with _lock, _get_conn() as conn:
+        new_users = conn.execute(
+            "SELECT COUNT(*) c FROM users WHERE created_at BETWEEN ? AND ?", (start_ts, end_ts)
+        ).fetchone()["c"]
+        active_users = conn.execute(
+            "SELECT COUNT(*) c FROM users WHERE last_active BETWEEN ? AND ?", (start_ts, end_ts)
+        ).fetchone()["c"]
+        wd_rows = conn.execute(
+            "SELECT status, COUNT(*) c, COALESCE(SUM(amount_usd),0) s FROM withdrawals "
+            "WHERE created_at BETWEEN ? AND ? GROUP BY status", (start_ts, end_ts)
+        ).fetchall()
+        crops = conn.execute(
+            "SELECT COUNT(*) c, COALESCE(SUM(value_usd),0) s FROM harvested_crops "
+            "WHERE harvested_at BETWEEN ? AND ?", (start_ts, end_ts)
+        ).fetchone()
+        claims = conn.execute(
+            "SELECT COUNT(*) c, COALESCE(SUM(t.reward),0) s FROM user_task_claims uc "
+            "JOIN tasks t ON t.id = uc.task_id WHERE uc.claimed_at BETWEEN ? AND ?",
+            (start_ts, end_ts)
+        ).fetchone()
+        ads_taps_rows = conn.execute(
+            "SELECT created_at FROM users WHERE created_at BETWEEN ? AND ?", (start_ts, end_ts)
+        ).fetchall()
+
+    buckets = {}
+    for r in ads_taps_rows:
+        d = (datetime.datetime.utcfromtimestamp(r["created_at"]) +
+             datetime.timedelta(hours=EGYPT_UTC_OFFSET_HOURS)).strftime("%Y-%m-%d")
+        buckets[d] = buckets.get(d, 0) + 1
+
+    return {
+        "start_date": start_date_str, "end_date": end_date_str,
+        "new_users": new_users,
+        "active_users": active_users,
+        "withdrawals_by_status": {r["status"]: {"count": r["c"], "total_usd": r["s"]} for r in wd_rows},
+        "crops_count": crops["c"], "crops_value_usd": crops["s"],
+        "task_claims_count": claims["c"], "task_claims_reward": claims["s"],
+        "daily_new_users": buckets,
+    }
 
 
 def admin_set_user_coins(user_id: int, new_coins: int):
