@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import datetime
 import urllib.request
 import urllib.parse
 from functools import wraps
@@ -429,7 +430,27 @@ def admin_dashboard():
     users = db.get_all_users()
     for u in users:
         u["level"] = db.compute_level(u["coins"])
-    return render_template("admin.html", stats=stats, users=users, now=time.time())
+
+    quick_range = request.args.get("range")
+    today = db._today_str()
+    if quick_range == "today":
+        start_date, end_date = today, today
+    elif quick_range == "30days":
+        start_date = (db._egypt_now() - datetime.timedelta(days=29)).strftime("%Y-%m-%d")
+        end_date = today
+    elif quick_range == "7days" or not (request.args.get("start") and request.args.get("end")):
+        start_date = (db._egypt_now() - datetime.timedelta(days=6)).strftime("%Y-%m-%d")
+        end_date = today
+    else:
+        start_date = request.args.get("start")
+        end_date = request.args.get("end")
+
+    range_stats = db.admin_range_stats(start_date, end_date)
+
+    return render_template(
+        "admin.html", stats=stats, users=users, now=time.time(),
+        range_stats=range_stats, active_page="overview",
+    )
 
 
 @app.route("/admin/user/<int:user_id>/set_coins", methods=["POST"])
@@ -453,7 +474,8 @@ def admin_user_detail(user_id):
     crops = db.admin_get_user_crops(user_id)
     return render_template(
         "admin_user_detail.html", user=user, claimed_tasks=claimed_tasks,
-        plots=plots, crops=crops, rarity_config=db.RARITY_CONFIG, now=time.time()
+        plots=plots, crops=crops, rarity_config=db.RARITY_CONFIG, now=time.time(),
+        active_page="users",
     )
 
 
@@ -511,7 +533,7 @@ def admin_user_delete_crop(user_id, crop_id):
 @admin_required
 def admin_tasks():
     tasks = db.admin_list_tasks()
-    return render_template("admin_tasks.html", tasks=tasks)
+    return render_template("admin_tasks.html", tasks=tasks, active_page="tasks")
 
 
 @app.route("/admin/tasks/add", methods=["POST"])
@@ -566,7 +588,9 @@ def admin_tasks_delete(task_id):
 @admin_required
 def admin_withdrawals():
     withdrawals = db.admin_get_withdrawals()
-    return render_template("admin_withdrawals.html", withdrawals=withdrawals, now=time.time())
+    return render_template(
+        "admin_withdrawals.html", withdrawals=withdrawals, now=time.time(), active_page="withdrawals"
+    )
 
 
 @app.route("/admin/withdrawals/<int:withdrawal_id>/status", methods=["POST"])
