@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>{% block title %}لوحة تحكم CanCel{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}" />
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+<div class="admin-shell">
+
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">🪙 <span>CanCel</span> Admin</div>
+    <nav class="sidebar-nav">
+      <a href="{{ url_for('admin_dashboard') }}" class="{{ 'active' if active_page == 'overview' else '' }}">
+        <span class="nav-icon">📊</span> نظرة عامة
+      </a>
+      <a href="{{ url_for('admin_dashboard') }}#users-section" class="{{ 'active' if active_page == 'users' else '' }}">
+        <span class="nav-icon">👥</span> اللاعبين
+      </a>
+      <a href="{{ url_for('admin_tasks') }}" class="{{ 'active' if active_page == 'tasks' else '' }}">
+        <span class="nav-icon">📋</span> المهام والإنجازات
+      </a>
+      <a href="{{ url_for('admin_withdrawals') }}" class="{{ 'active' if active_page == 'withdrawals' else '' }}">
+        <span class="nav-icon">💸</span> طلبات السحب
+      </a>
+    </nav>
+    <a href="{{ url_for('admin_logout') }}" class="sidebar-logout">
+      <span class="nav-icon">🚪</span> خروج
+    </a>
+  </aside>
+
+  <div class="admin-mobile-topbar">
+    <button id="mobileNavToggle" class="mobile-nav-toggle">☰</button>
+    <span>🪙 CanCel Admin</span>
+  </div>
+
+  <main class="admin-main">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+<script>
+  document.getElementById("mobileNavToggle").addEventListener("click", () => {
+    document.querySelector(".admin-sidebar").classList.toggle("open");
+  });
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>
