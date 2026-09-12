@@ -238,8 +238,8 @@ html[lang="en"] body { font-family: var(--font-en); }
 }
 
 .coin-btn {
-  width: 120px;
-  height: 120px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   border: none;
   cursor: pointer;
