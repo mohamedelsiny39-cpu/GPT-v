@@ -2,11 +2,7 @@ const I18N = {
   ar: {
     level: "المستوى",
     yourBalance: "رصيدك من CanCel",
-    badgeVideo: "إعلان عادي",
     watchAdTitle: "اتفرج على إعلان",
-    adVideoLabel: "إعلان عادي",
-    badgeExternal: "إعلان خارجي",
-    adExternalLabel: "إعلان خارجي",
     dailyCheckin: "تسجيل يومي",
     days: "أيام",
     claim: "استلم",
