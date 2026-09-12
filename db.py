@@ -24,10 +24,11 @@ REFERRAL_REWARD = 500
 REFERRAL_SIGNUP_BONUS = 100
 
 # ---------- الإعلانات ----------
-AD_REFILL_SECONDS = 86400  # حد الإعلانات بقى يومي بدل ساعي
+AD_REFILL_SECONDS = 3600
 AD_MIN_GAP_SECONDS = 8
 AD_CONFIG = {
-    "interstitial": {"min_reward": 15, "max_reward": 15, "hourly_limit": 50},
+    "interstitial": {"min_reward": 15, "max_reward": 20, "hourly_limit": 999999},
+    "popup": {"min_reward": 5, "max_reward": 10, "hourly_limit": 999999},
 }
 
 # ---------- اللعبة البسيطة (صندوق الحظ) ----------
@@ -401,7 +402,7 @@ def get_or_create_user(user_id: int, first_name: str = "", photo_url: str = ""):
                 "VALUES (?, ?, ?, 0, ?, ?, ?, 0, 0, 0, '', ?, ?, ?, ?, ?, ?, ?, ?)",
                 (user_id, first_name, photo_url, MAX_ENERGY, MAX_ENERGY, now, now, now,
                  AD_CONFIG["interstitial"]["hourly_limit"], now,
-                 0, now,
+                 AD_CONFIG["popup"]["hourly_limit"], now,
                  MINIGAME_HOURLY_LIMIT, now),
             )
             conn.commit()
@@ -1036,7 +1037,7 @@ def admin_reset_ad_limits(user_id: int):
             "UPDATE users SET ad_interstitial_remaining=?, ad_interstitial_refill=?, "
             "ad_popup_remaining=?, ad_popup_refill=? WHERE user_id=?",
             (AD_CONFIG["interstitial"]["hourly_limit"], now,
-             0, now, user_id),
+             AD_CONFIG["popup"]["hourly_limit"], now, user_id),
         )
         conn.commit()
 
